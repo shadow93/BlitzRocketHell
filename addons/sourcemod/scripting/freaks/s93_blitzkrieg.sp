@@ -1,6 +1,7 @@
 // The Blitzkrieg's abilities pack:
-// rage_blitzkrieg - Become ubercharged, crit boosted, change rocket launchers
-// rage_miniblitzkrieg - Identical to rage_blitzkrieg, but without ubercharge.
+// blitzkrieg_config - Configuration for his rounds.
+// blitzkrieg_barrage - Become ubercharged, crit boosted, change rocket launchers.
+// mini_blitzkrieg - Identical to rage_blitzkrieg, but without ubercharge.
 
 #pragma semicolon 1
 
@@ -48,10 +49,13 @@ new combatstyle;
 new weapondifficulty;
 new voicelines;
 new danmakuboss;
+new blitzkriegrage;
+new miniblitzkriegrage;
+new blitzgrav;
 new BossTeam=_:TFTeam_Blue;
 //new OtherTeam=_:TFTeam_Red;
 
-#define PLUGIN_VERSION "1.77.1"
+#define PLUGIN_VERSION "1.77.2"
 #define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
 
 public OnMapStart()
@@ -96,9 +100,10 @@ public OnPluginStart2()
 	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
+	HookEvent("player_death", PreDeath, EventHookMode_Pre);
 	PrintToServer("************************************************************************");
 	PrintToServer("--------------------FREAK FORTRESS 2: THE BLITZKRIEG--------------------");
-	PrintToServer("------------BETA 1.77.1 EXPERIMENTAL - BY SHADoW NiNE TR3S---------------");
+	PrintToServer("------------BETA 1.77.2 EXPERIMENTAL - BY SHADoW NiNE TR3S---------------");
 	PrintToServer("------------------------------------------------------------------------");
 	PrintToServer("-if you encounter bugs or see errors in console relating to this plugin-");
 	PrintToServer("-please post them in Blitzkrieg's Github Repository which can be found--");
@@ -119,26 +124,25 @@ public OnLibraryAdded(const String:name[])
     }
 }
 
+
 // Blitzkrieg's Rage & Death Effect //
 
 public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:ability_name[],action)
 {
-	if (!strcmp(ability_name,"rage_blitzkrieg")) 	// UBERCHARGE, KRITZKRIEG & CROCKET HELL
+	if (!strcmp(ability_name,"blitzkrieg_barrage")) 	// UBERCHARGE, KRITZKRIEG & CROCKET HELL
 	{	
 		if (FF2_GetRoundState()==1)
 		{
 			new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 			TF2_AddCondition(Boss,TFCond_Ubercharged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Ubercharge
-			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
-			new rockets=FF2_GetAbilityArgument(index,this_plugin_name,ability_name, 3, 360);	//Ammo
-			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0),Rage_Timer_UnuseCharge,index);
-			PrintToServer("*rage_blitzkrieg*");
-			SetEntityGravity(Boss, 0.05);
+			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
+			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
+			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
+			SetEntityGravity(Boss, float(blitzgrav));
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
 			BlitzkriegBarrage(Boss);
-			SetAmmo(Boss, TFWeaponSlot_Primary,rockets);
-			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,4),ItzBlitzkriegTime,index);
+			SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
 			if (voicelines!=0)
 			{
 				decl i;
@@ -151,32 +155,42 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			{
 				EmitSoundToAll(BLITZKRIEG_SND);
 			}	
+			PrintToServer("*blitzkrieg_barrage*");
 		}
 		else if (FF2_GetRoundState()==2)
 		{
 			return Plugin_Stop;
 		}
 	}
-	else if (!strcmp(ability_name,"rage_miniblitzkrieg")) 	// KRITZKRIEG & CROCKET HELL
+	else if (!strcmp(ability_name,"mini_blitzkrieg")) 	// KRITZKRIEG & CROCKET HELL
 	{		
 		if (FF2_GetRoundState()==1)
 		{	
 			new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Kritzkrieg
-			PrintToServer("*rage_miniblitzkrieg*");
-			SetEntityGravity(Boss, 0.05);
-			new crockets=FF2_GetAbilityArgument(index,this_plugin_name,ability_name, 2, 180);	//Ammo
+			screwgravity = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2),ScrewThisGravity,index);	
+			PrintToServer("*mini_blitzkrieg*");
+			SetEntityGravity(Boss, float(blitzgrav));
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
-			RandomDanmaku(Boss);
-			if(combatstyle==0)
+			if(crockethell!=INVALID_HANDLE)
 			{
-				SetAmmo(Boss, TFWeaponSlot_Primary,crockets);
+				BlitzkriegBarrage(Boss);
+				SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
+				PrintToServer("*blitzkrieg*");
 			}
-			else if(combatstyle!=0)
+			else
 			{
-				SetAmmo(Boss, TFWeaponSlot_Primary,999999);
+				RandomDanmaku(Boss);
+				if(combatstyle==0)
+				{
+					SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
+				}
+				else if(combatstyle!=0)
+				{
+					SetAmmo(Boss, TFWeaponSlot_Primary,999999);
+				}
+				PrintToServer("*mini blitzkrieg*");
 			}
-			screwgravity = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ScrewThisGravity,index);	
 			if (voicelines!=0)
 			{
 				decl i;
@@ -763,6 +777,9 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
 				customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
 				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
+				blitzgrav=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Blitzkrieg Rampage Ammo
 				if(combatstyle!=0)
 				{	
 					TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Melee);
@@ -776,7 +793,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 					PrintHintText(danmakuboss, "Mode is Mixed Combat. Your Ubersaw can Backstab");
 					TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Primary);
 					RandomDanmaku(danmakuboss);
-					SetAmmo(danmakuboss, TFWeaponSlot_Primary,360);
+					SetAmmo(danmakuboss, TFWeaponSlot_Primary, miniblitzkriegrage);
 				}
 				if(customweapons == 0)
 				{
@@ -788,6 +805,60 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		}
 	}
 }
+
+public PreDeath(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new attacker=GetClientOfUserId(GetEventInt(event, "attacker"));
+	new String:weapon[50];
+	GetEventString(event, "weapon", weapon, sizeof(weapon));
+	new bossAttacker=FF2_GetBossIndex(attacker);
+	if(bossAttacker!=-1)
+	{
+		if(FF2_HasAbility(bossAttacker, this_plugin_name, "blitzkrieg_config"))
+		{
+			if(StrEqual(weapon, "tf_projectile_rocket", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "airstrike", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "liberty_launcher", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "quake_rl", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "blackbox", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "dumpster_device", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "rocketlauncher_directhit", false))
+			{
+				SetEventString(event, "weapon", "spellbook_meteor");
+				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+			}
+			else if(StrEqual(weapon, "ubersaw", false))
+			{
+				SetEventString(event, "weapon", "taunt_medic");
+				SetEventString(event, "weapon_logclassname", "taunt_medic");
+			}
+		}
+	}
+}	
 
 public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
@@ -812,12 +883,14 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 					if(crockethell!=INVALID_HANDLE)
 					{
 						BlitzkriegBarrage(attacker);
+						SetAmmo(attacker, TFWeaponSlot_Primary, blitzkriegrage);
 					}
 					else
 					{
 						RandomDanmaku(attacker);
+						SetAmmo(attacker, TFWeaponSlot_Primary,999999);
 					}
-					SetAmmo(attacker, TFWeaponSlot_Primary,999999);
+					
 				}	
 			}
 			DropReanimator(client);
