@@ -17,8 +17,17 @@
 #undef REQUIRE_PLUGIN
 #include <updater>
 
+
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
+
+#define SWITCHMEDA	"vo/medic_mvm_resurrect01.wav"
+#define SWITCHSOLA	"vo/soldier_mvm_resurrect03.wav"
+#define SWITCHMEDB	"vo/medic_mvm_resurrect02.wav"
+#define SWITCHSOLB	"vo/soldier_mvm_resurrect05.wav"
+#define SWITCHMEDC	"vo/medic_mvm_resurrect03.wav"
+#define SWITCHSOLC	"vo/soldier_mvm_resurrect06.wav"
+
 #define SCOUT_R1 "vo/Scout_sf13_magic_reac03.wav"
 #define SCOUT_R2 "vo/Scout_sf13_magic_reac07.wav"
 #define SOLLY_R1 "vo/Soldier_sf13_magic_reac03.wav"
@@ -42,8 +51,10 @@
 #define SPY_R4 "vo/Spy_sf13_magic_reac04.wav"
 #define SPY_R5 "vo/Spy_sf13_magic_reac05.wav"
 #define SPY_R6 "vo/Spy_sf13_magic_reac06.wav"
+//Handles
 new Handle: crockethell;
 new Handle: screwgravity;
+//Other Stuff
 new customweapons;
 new combatstyle;
 new weapondifficulty;
@@ -62,6 +73,12 @@ public OnMapStart()
 {
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
+	PrecacheSound(SWITCHMEDA,true);
+	PrecacheSound(SWITCHMEDB,true);
+	PrecacheSound(SWITCHMEDC,true);
+	PrecacheSound(SWITCHSOLA,true);
+	PrecacheSound(SWITCHSOLB,true);
+	PrecacheSound(SWITCHSOLC,true);
 	PrecacheSound(SCOUT_R1,true);
 	PrecacheSound(SCOUT_R2,true);
 	PrecacheSound(SOLLY_R1,true);
@@ -140,9 +157,68 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
 			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			SetEntityGravity(Boss, float(blitzgrav));
-			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
-			BlitzkriegBarrage(Boss);
-			SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
+			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
+			{
+				TF2_SetPlayerClass(Boss, TFClass_Soldier);
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(SWITCHSOLA);
+					case 1:
+						EmitSoundToAll(SWITCHSOLB);
+					case 2:
+						EmitSoundToAll(SWITCHSOLC);
+				}
+			}
+			else if(TF2_GetPlayerClass(Boss)==TFClass_Soldier)
+			{
+				TF2_SetPlayerClass(Boss, TFClass_Medic);
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(SWITCHMEDA);
+					case 1:
+						EmitSoundToAll(SWITCHMEDB);
+					case 2:
+						EmitSoundToAll(SWITCHMEDC);
+				}				
+			}
+			SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
+			AcceptEntityInput(Boss, "SetCustomModel");
+			TF2_RemoveAllWeapons(Boss);
+			new entity, owner;
+			while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
+			{
+				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+				{
+					TF2_RemoveWearable(owner, entity);
+				}
+			}
+			while((entity=FindEntityByClassname(entity, "tf_wearable_demoshield"))!=-1)
+			{
+				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+				{
+					TF2_RemoveWearable(owner, entity);
+				}
+			}
+			while((entity=FindEntityByClassname(entity, "tf_powerup_bottle"))!=-1)
+			{
+				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+				{
+					TF2_RemoveWearable(owner, entity);
+				}
+			}
+			if(combatstyle==0)
+			{
+				SpawnWeapon(Boss, "tf_weapon_knife", 1003, 102, 5, "275 ; 1 ; 2 ; 3 ; 1 ; 0.5 ; 39 ; 0.3 ; 68 ; 12 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				BlitzkriegBarrage(Boss);
+				SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
+			}
+			else if(combatstyle!=0)
+			{
+				BlitzkriegBarrage(Boss);
+				SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
+			}
 			if (voicelines!=0)
 			{
 				decl i;
