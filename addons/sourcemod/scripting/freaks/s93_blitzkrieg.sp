@@ -2,6 +2,13 @@
 // blitzkrieg_config - Configuration for his rounds.
 // blitzkrieg_barrage - Become ubercharged, crit boosted, change rocket launchers.
 // mini_blitzkrieg - Identical to rage_blitzkrieg, but without ubercharge.
+//
+// Special thanks to Wolvan for the necessary code for the revive markers.
+// (code ported to avoid the need to depend on another plugin for this)
+// https://forums.alliedmods.net/showthread.php?t=244208
+//
+// Special thanks to BBG_Theory, M76030, Ravensbro, and VoiDED for pointing out bugs
+//
 
 #pragma semicolon 1
 
@@ -62,7 +69,12 @@
 //Handles
 new Handle: crockethell;
 new Handle: screwgravity;
+new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 //Other Stuff
+new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
+new reviveCount[MAXPLAYERS+1] = { 0, ... };
+new currentTeam[MAXPLAYERS+1] = {0, ... };
+new respawnMarkers[MAXPLAYERS+1] = { INVALID_ENT_REFERENCE, ... };
 new customweapons;
 new combatstyle;
 new weapondifficulty;
@@ -71,10 +83,12 @@ new danmakuboss;
 new blitzkriegrage;
 new miniblitzkriegrage;
 new blitzgrav;
+new allowrevive;
+new decaytime;
 new BossTeam=_:TFTeam_Blue;
 //new OtherTeam=_:TFTeam_Red;
 
-#define PLUGIN_VERSION "1.77.2"
+#define PLUGIN_VERSION "1.8"
 #define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
 
 public OnMapStart()
@@ -135,9 +149,11 @@ public OnPluginStart2()
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_death", PreDeath, EventHookMode_Pre);
+	HookEvent("player_spawn", OnPlayerSpawn);
+	HookEvent("player_changeclass", OnChangeClass);
 	PrintToServer("************************************************************************");
 	PrintToServer("--------------------FREAK FORTRESS 2: THE BLITZKRIEG--------------------");
-	PrintToServer("------------BETA 1.77.2 EXPERIMENTAL - BY SHADoW NiNE TR3S---------------");
+	PrintToServer("--------------BETA 1.8 EXPERIMENTAL - BY SHADoW NiNE TR3S---------------");
 	PrintToServer("------------------------------------------------------------------------");
 	PrintToServer("-if you encounter bugs or see errors in console relating to this plugin-");
 	PrintToServer("-please post them in Blitzkrieg's Github Repository which can be found--");
@@ -147,6 +163,17 @@ public OnPluginStart2()
     {
 		Updater_AddPlugin(UPDATE_URL);
 		PrintToServer("Checking for updates for TF2 Danmaku");
+	}
+	decl String:steamid[256];
+	for (new i = 1; i <= MaxClients; i++) 
+	{
+		if (IsClientInGame(i)) 
+		{
+			currentTeam[i] = GetClientTeam(i);
+			ChangeClass[i] = false;
+			GetClientAuthString(i, steamid, sizeof(steamid));
+		}
+		reviveCount[i] = 0;
 	}
 }
 
@@ -206,6 +233,7 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			//ONLY FOR LEGACY REASONS, FF2 1.10.3 and newer doesn't actually need this to restore the boss model.
 			SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
 			AcceptEntityInput(Boss, "SetCustomModel");
+			SetEntProp(Boss, Prop_Send, "m_bUseClassAnimations", 1);
 			//Removing all wearables
 			new entity, owner;
 			while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
@@ -433,22 +461,185 @@ ClassResponses(client)
 	}
 }
 
-DropReanimator(client)
+// ESSENTIAL CODE TO GET THE REANIMATOR WORKING
+
+public bool:DropReanimator(client) 
 {
-	new reanimator=CreateEntityByName("entity_revive_marker"); // The Entity name for the Reanimator
-	SetEntPropEnt(reanimator, Prop_Send, "m_hOwner", client); // client index
-	SetEntProp(reanimator, Prop_Send, "m_nSolidType", 2);
-	SetEntProp(reanimator, Prop_Send, "m_usSolidFlags", 8);
-	SetEntProp(reanimator, Prop_Send, "m_fEffects", 16);
-	SetEntProp(reanimator, Prop_Send, "m_iTeamNum", 2); // client team
-	SetEntProp(reanimator, Prop_Send, "m_CollisionGroup", 1);
-	SetEntProp(reanimator, Prop_Send, "m_bSimulatedEveryTick", 1);
-	SetEntProp(reanimator, Prop_Send, "m_nBody", 6);
-	SetEntProp(reanimator, Prop_Send, "m_nSequence", 1);
-	SetEntPropFloat(reanimator, Prop_Send, "m_flPlaybackRate", 1.0);
-	DispatchSpawn(reanimator);
 	PrintToServer("DropReanimator(client)");
+	// spawn the Revive Marker
+	new clientTeam = GetClientTeam(client);
+	new reviveMarker = CreateEntityByName("entity_revive_marker");
+	if (reviveMarker != -1) {
+		SetEntPropEnt(reviveMarker, Prop_Send, "m_hOwner", client); // client index 
+		SetEntProp(reviveMarker, Prop_Send, "m_nSolidType", 2); 
+		SetEntProp(reviveMarker, Prop_Send, "m_usSolidFlags", 8); 
+		SetEntProp(reviveMarker, Prop_Send, "m_fEffects", 16); 
+		SetEntProp(reviveMarker, Prop_Send, "m_iTeamNum", clientTeam); // client team 
+		SetEntProp(reviveMarker, Prop_Send, "m_CollisionGroup", 1); 
+		SetEntProp(reviveMarker, Prop_Send, "m_bSimulatedEveryTick", 1);
+		SetEntDataEnt2(client, FindSendPropInfo("CTFPlayer", "m_nForcedSkin")+4, reviveMarker);
+		SetEntProp(reviveMarker, Prop_Send, "m_nBody", _:TF2_GetPlayerClass(client) - 1); // character hologram that is shown
+		SetEntProp(reviveMarker, Prop_Send, "m_nSequence", 1); 
+		SetEntPropFloat(reviveMarker, Prop_Send, "m_flPlaybackRate", 1.0);
+		SetEntProp(reviveMarker, Prop_Data, "m_iInitialTeamNum", clientTeam);
+		// call Forward
+		new Action:result = Plugin_Continue;
+		Call_PushCell(client);
+		Call_PushCell(reviveMarker);
+		Call_Finish(result);
+		
+		if (result == Plugin_Handled) {
+			return false;
+		} else if (result == Plugin_Stop) {
+			AcceptEntityInput(reviveMarker, "Kill");
+			return false;
+		}
+		DispatchSpawn(reviveMarker);
+		respawnMarkers[client] = EntIndexToEntRef(reviveMarker);
+		if(decayTimers[client] == INVALID_HANDLE) 
+		{
+			decayTimers[client] = CreateTimer(float(decaytime), TimeBeforeRemoval, GetClientUserId(client));
+		}
+		CreateTimer(0.1, TransmitMarker, GetClientUserId(client));
+		return true;
+	} else {
+		return false;
+	}
 }
+
+public bool:RemoveReanimator(client)
+	{
+	// call Forward
+	new Action:result = Plugin_Continue;
+	Call_PushCell(client);
+	Call_PushCell(respawnMarkers[client]);
+	Call_Finish(result);
+	
+	if (result == Plugin_Handled || result == Plugin_Stop) {
+		return false;
+	}
+	
+	if(!IsClientInGame(client)) {
+		return false;
+	}
+	
+	// set team and class change variable
+	currentTeam[client] = GetClientTeam(client);
+	ChangeClass[client] = false;
+	
+	
+	// kill Revive Marker if it exists
+	if (IsValidMarker(respawnMarkers[client])) {
+		if(GetEntProp(respawnMarkers[client],Prop_Send,"m_iHealth") >= GetEntProp(respawnMarkers[client],Prop_Send,"m_iMaxHealth")) {
+			reviveCount[client]++;
+		}
+		AcceptEntityInput(respawnMarkers[client], "Kill");
+		respawnMarkers[client] = INVALID_ENT_REFERENCE;
+	} 
+	else 
+	{
+		return false;
+	}
+	
+	// kill Decay Timer when it exists
+	if (decayTimers[client] != INVALID_HANDLE) 
+	{
+		KillTimer(decayTimers[client]);
+		decayTimers[client] = INVALID_HANDLE;
+	}
+	return true;
+}
+
+public bool:CheckForMedics(team)
+{
+	for (new i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientInGame(i)) 
+		{
+			if ((GetClientTeam(i) == team) && (TF2_GetPlayerClass(i) == TFClass_Medic)) 
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+public bool:IsValidMarker(marker) 
+{
+	if (IsValidEntity(marker)) 
+	{
+		decl String:buffer[128];
+		GetEntityClassname(marker, buffer, sizeof(buffer));
+		if (strcmp(buffer,"entity_revive_marker",false) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	RemoveReanimator(client);
+}
+
+public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcast) 
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	ChangeClass[client] = true;
+}
+
+public Action:TransmitMarker(Handle:timer, any:userid) {
+	new client = GetClientOfUserId(userid);
+	if(!IsValidMarker(respawnMarkers[client]) || !IsClientInGame(client)) {
+		return;
+	}
+	// get position to teleport the Marker to
+	new Float:position[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
+	TeleportEntity(respawnMarkers[client], position, NULL_VECTOR, NULL_VECTOR);
+}
+
+public Action:TimeBeforeRemoval(Handle:timer, any:userid) {
+	
+	new client = GetClientOfUserId(userid);
+	
+	if(!IsValidMarker(respawnMarkers[client]) || !IsClientInGame(client)) {
+		return;
+	}
+	
+	// call Forward
+	new Action:result = Plugin_Continue;
+	Call_PushCell(client);
+	Call_PushCell(respawnMarkers[client]);
+	Call_Finish(result);
+	
+	if (result == Plugin_Handled || result == Plugin_Stop) {
+		return;
+	}
+	
+	RemoveReanimator(client);
+	if(decayTimers[client] != INVALID_HANDLE) {
+		KillTimer(decayTimers[client]);
+		decayTimers[client] = INVALID_HANDLE;
+	}
+}
+
+public OnClientDisconnect(client) 
+{
+	// remove the marker
+	RemoveReanimator(client);
+	
+	// reset storage array values
+	currentTeam[client] = 0;
+	ChangeClass[client] = false;
+	reviveCount[client] = 0;
+ }
+
+
+// ESSENTIAL CODE ENDS
 
 // This is the weapon configs for Blitzkrieg's starter weapons & switch upon rage or after Blitzkrieg ability wears off
 RandomDanmaku(client)
@@ -1000,7 +1191,9 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
 				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
 				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
-				blitzgrav=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Blitzkrieg Rampage Ammo
+				blitzgrav=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Gravity
+				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow players to be revived?
+				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Timer before reanimator expires
 				if(combatstyle!=0)
 				{	
 					TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Melee);
@@ -1114,7 +1307,10 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 					
 				}	
 			}
-			DropReanimator(client);
+			if(allowrevive!=0)
+			{
+				DropReanimator(client);
+			}
 		}
 	}
 	return Plugin_Continue;
@@ -1126,6 +1322,10 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	if (IsValidClient(danmakuboss))
 	{
 		SetEntityGravity(danmakuboss, 1.0);
+	}
+	for (new i = 1; i <= MaxClients; i++) 
+	{
+		RemoveReanimator(i);
 	}
 	CreateTimer(2.0, StopAll);
 	return Plugin_Continue;
