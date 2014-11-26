@@ -28,6 +28,14 @@
 #define SWITCHMEDC	"vo/medic_mvm_resurrect03.wav"
 #define SWITCHSOLC	"vo/soldier_mvm_resurrect06.wav"
 
+#define MEDICRAGEA	"vo/medic_mvm_heal_shield02.wav"
+#define MEDICRAGEB	"vo/medic_positivevocalization05.wav"
+#define MEDICRAGEC	"vo/taunts/medic_taunts08.wav"
+
+#define SOLDIERRAGEA	"vo/taunts/soldier_taunts16.wav"
+#define SOLDIERRAGEB	"vo/taunts/soldier_taunts05.wav"
+#define SOLDIERRAGEC	"vo/taunts/soldier_taunts21.wav"
+
 #define SCOUT_R1 "vo/Scout_sf13_magic_reac03.wav"
 #define SCOUT_R2 "vo/Scout_sf13_magic_reac07.wav"
 #define SOLLY_R1 "vo/Soldier_sf13_magic_reac03.wav"
@@ -73,12 +81,21 @@ public OnMapStart()
 {
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
+	//When Blitzkrieg returns to his normal medic self
 	PrecacheSound(SWITCHMEDA,true);
 	PrecacheSound(SWITCHMEDB,true);
 	PrecacheSound(SWITCHMEDC,true);
+	PrecacheSound(MEDICRAGEA,true);
+	PrecacheSound(MEDICRAGEB,true);
+	PrecacheSound(MEDICRAGEC,true);
+	//When the fallen Soldier's soul takes over
 	PrecacheSound(SWITCHSOLA,true);
 	PrecacheSound(SWITCHSOLB,true);
 	PrecacheSound(SWITCHSOLC,true);
+	PrecacheSound(SOLDIERRAGEA,true);
+	PrecacheSound(SOLDIERRAGEB,true);
+	PrecacheSound(SOLDIERRAGEC,true);
+	//Class Voice Reaction Lines
 	PrecacheSound(SCOUT_R1,true);
 	PrecacheSound(SCOUT_R2,true);
 	PrecacheSound(SOLLY_R1,true);
@@ -157,6 +174,7 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
 			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			SetEntityGravity(Boss, float(blitzgrav));
+			//Switching Blitzkrieg's player class while retaining the same model to switch the voice responses/commands
 			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
 			{
 				TF2_SetPlayerClass(Boss, TFClass_Soldier);
@@ -183,9 +201,12 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 						EmitSoundToAll(SWITCHMEDC);
 				}				
 			}
+			//Removing unwanted weapons
+			TF2_RemoveAllWeapons(Boss);
+			//ONLY FOR LEGACY REASONS, FF2 1.10.3 and newer doesn't actually need this to restore the boss model.
 			SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
 			AcceptEntityInput(Boss, "SetCustomModel");
-			TF2_RemoveAllWeapons(Boss);
+			//Removing all wearables
 			new entity, owner;
 			while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
 			{
@@ -208,6 +229,7 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 					TF2_RemoveWearable(owner, entity);
 				}
 			}
+			//Restoring Melee (if using hybrid style), otherwise, giving Blitzkrieg the death effect rocket launchers.
 			if(combatstyle==0)
 			{
 				SpawnWeapon(Boss, "tf_weapon_knife", 1003, 102, 5, "275 ; 1 ; 2 ; 3 ; 1 ; 0.5 ; 39 ; 0.3 ; 68 ; 12 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
@@ -219,6 +241,7 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 				BlitzkriegBarrage(Boss);
 				SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
 			}
+			//For the Class Reaction Voice Lines
 			if (voicelines!=0)
 			{
 				decl i;
@@ -231,6 +254,7 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			{
 				EmitSoundToAll(BLITZKRIEG_SND);
 			}	
+			//Development Purposes
 			PrintToServer("*blitzkrieg_barrage*");
 		}
 		else if (FF2_GetRoundState()==2)
@@ -248,6 +272,31 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			PrintToServer("*mini_blitzkrieg*");
 			SetEntityGravity(Boss, float(blitzgrav));
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
+			//RAGE Voice lines depending on Blitzkrieg's current player class (Blitzkrieg is two classes in 1 - Medic / Soldier soul in the same body)
+			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
+			{
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(MEDICRAGEA, Boss);
+					case 1:
+						EmitSoundToAll(MEDICRAGEB, Boss);
+					case 2:
+						EmitSoundToAll(MEDICRAGEC, Boss);
+				}
+			}
+			else if(TF2_GetPlayerClass(Boss)==TFClass_Soldier)
+			{
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(SOLDIERRAGEA, Boss);
+					case 1:
+						EmitSoundToAll(SOLDIERRAGEB, Boss);
+					case 2:
+						EmitSoundToAll(SOLDIERRAGEC, Boss);
+				}				
+			}
 			if(crockethell!=INVALID_HANDLE)
 			{
 				BlitzkriegBarrage(Boss);
@@ -286,6 +335,102 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 		}
 	}
 	return Plugin_Continue;
+}
+
+ClassResponses(client)
+{
+	PrintToServer("ClassResponses(client)");
+	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=BossTeam)
+	{
+		if(TF2_GetPlayerClass(client)==TFClass_Scout)
+		{
+			switch (GetRandomInt(0,1))
+			{
+				case 0:
+					EmitSoundToAll(SCOUT_R1,client);
+				case 1:
+					EmitSoundToAll(SCOUT_R2,client);
+			}
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
+		{
+			EmitSoundToAll(SOLLY_R1,client);
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_Pyro)
+		{
+			EmitSoundToAll(PYRO_R1,client);
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_DemoMan)
+		{
+			EmitSoundToAll(DEMO_R1,client);
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_Heavy)
+		{
+			switch (GetRandomInt(0,1))
+			{
+				case 0:
+					EmitSoundToAll(HEAVY_R1,client);
+				case 1:	
+					EmitSoundToAll(HEAVY_R2,client);
+			}
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_Engineer)
+		{
+			switch (GetRandomInt(0,1))
+			{
+				case 0:
+					EmitSoundToAll(ENGY_R1,client);
+				case 1:
+					EmitSoundToAll(ENGY_R2,client);
+			}
+		}	
+		else if(TF2_GetPlayerClass(client)==TFClass_Medic)
+		{
+			switch (GetRandomInt(0,4))
+			{
+				case 0:
+					EmitSoundToAll(MEDIC_R1,client);
+				case 1:
+					EmitSoundToAll(MEDIC_R2,client);
+				case 2:
+					EmitSoundToAll(MEDIC_R3,client);
+				case 3:
+					EmitSoundToAll(MEDIC_R4,client);
+				case 4:
+					EmitSoundToAll(MEDIC_R5,client);
+			}
+		}	
+		else if(TF2_GetPlayerClass(client)==TFClass_Sniper)
+		{
+			switch (GetRandomInt(0,2))
+			{
+				case 0:
+					EmitSoundToAll(SNIPER_R1,client);
+				case 1:
+					EmitSoundToAll(SNIPER_R2,client);
+				case 2:
+					EmitSoundToAll(SNIPER_R3,client);
+			}
+		}	
+		else if(TF2_GetPlayerClass(client)==TFClass_Spy)
+		{
+			switch (GetRandomInt(0,4))
+			{
+				case 0:
+					EmitSoundToAll(SPY_R1,client);
+				case 1:
+					EmitSoundToAll(SPY_R2,client);
+				case 2:
+					EmitSoundToAll(SPY_R3,client);
+				case 3:
+					EmitSoundToAll(SPY_R4,client);
+				case 4:
+					EmitSoundToAll(SPY_R5,client);
+				case 5:
+					EmitSoundToAll(SPY_R6,client);
+			}						
+		}
+	}
 }
 
 DropReanimator(client)
@@ -417,25 +562,25 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "275 ; 1  ; 1 ; 0.20 ; 413 ; 1 ; 4 ; 17 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.52 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.20 ; 413 ; 1 ; 4 ; 17 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.52 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "275 ; 1  ; 1 ; 0.22 ; 413 ; 1 ; 4 ; 19 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.49 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.22 ; 413 ; 1 ; 4 ; 19 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.49 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "275 ; 1  ; 1 ; 0.18 ; 413 ; 1 ; 4 ; 20 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.46 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.18 ; 413 ; 1 ; 4 ; 20 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.46 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "275 ; 1  ; 1 ; 0.21 ; 413 ; 1 ; 4 ; 22 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.43 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.21 ; 413 ; 1 ; 4 ; 22 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.43 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "275 ; 1  ; 1 ; 0.24 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.40 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.24 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.40 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "275 ; 1  ; 1 ; 0.19 ; 413 ; 1 ; 4 ; 26 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.25 ; 137 ; 5 ; 104 ; 0.60 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.19 ; 413 ; 1 ; 4 ; 26 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.25 ; 137 ; 5 ; 104 ; 0.60 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "275 ; 1  ; 1 ; 0.27 ; 413 ; 1 ; 4 ; 23 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.25 ; 137 ; 5 ; 104 ; 0.55 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.27 ; 413 ; 1 ; 4 ; 23 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.25 ; 137 ; 5 ; 104 ; 0.55 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "275 ; 1  ; 1 ; 0.25 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.22 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.25 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.22 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "275 ; 1  ; 1 ; 0.23 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.40 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.23 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.40 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "275 ; 1  ; 1 ; 0.20 ; 413 ; 1 ; 4 ; 23 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.20 ; 413 ; 1 ; 4 ; 23 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 		}
 	}
 	else if (weapondifficulty==5) // YOU MUST BE DREAMING TO EVEN TRY THIS!
@@ -443,25 +588,25 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 105, 5, "275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.74 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.74 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 105, 5, "275 ; 1  ; 1 ; 0.44 ; 413 ; 1 ; 4 ; 31 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.78 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.44 ; 413 ; 1 ; 4 ; 31 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.78 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 105, 5, "275 ; 1  ; 1 ; 0.36 ; 413 ; 1 ; 4 ; 22 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.72 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.36 ; 413 ; 1 ; 4 ; 22 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.72 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 105, 5, "275 ; 1  ; 1 ; 0.42 ; 413 ; 1 ; 4 ; 24 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.66 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.42 ; 413 ; 1 ; 4 ; 24 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.66 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 105, 5, "275 ; 1  ; 1 ; 0.48 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.60 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.48 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.60 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 105, 5, "275 ; 1  ; 1 ; 0.38 ; 413 ; 1 ; 4 ; 28 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.38 ; 413 ; 1 ; 4 ; 28 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 105, 5, "275 ; 1  ; 1 ; 0.54 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.54 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 105, 5, "275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.72 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.72 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "275 ; 1  ; 1 ; 0.46 ; 413 ; 1 ; 4 ; 34 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.46 ; 413 ; 1 ; 4 ; 34 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 105, 5, "275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.90 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.90 ; 137 ; 5 ; 104 ; 0.20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 		}
 	}
 	else if (weapondifficulty==6) // I THINK YOU LOST IT ALREADY!
@@ -469,25 +614,25 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 106, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.94 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 27 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 104 ; 0.94 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 106, 5, "275 ; 1  ; 1 ; 0.64 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.98 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.64 ; 413 ; 1 ; 4 ; 29 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 104 ; 0.98 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 106, 5, "275 ; 1  ; 1 ; 0.56 ; 413 ; 1 ; 4 ; 30 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.92 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.56 ; 413 ; 1 ; 4 ; 30 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.92 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 106, 5, "275 ; 1  ; 1 ; 0.62 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.86 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.62 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.86 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 106, 5, "275 ; 1  ; 1 ; 0.68 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.80 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.68 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.80 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 106, 5, "275 ; 1  ; 1 ; 0.58 ; 413 ; 1 ; 4 ; 36 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.58 ; 413 ; 1 ; 4 ; 36 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 106, 5, "275 ; 1  ; 1 ; 0.74 ; 413 ; 1 ; 4 ; 33 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.74 ; 413 ; 1 ; 4 ; 33 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 106, 5, "275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 37 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.92 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 37 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.92 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "275 ; 1  ; 1 ; 0.66 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.50 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.66 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.50 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 106, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 33 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.90 ; 137 ; 5 ; 104 ; 0.50 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 33 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.90 ; 137 ; 5 ; 104 ; 0.50 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 		}
 	}
 	else if (weapondifficulty==7) // WAKE UP!!!! PLEASE WAKE UP!!!
@@ -495,23 +640,23 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 39 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 103 ; 1.14 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 39 ; 6 ; 0.18 ; 97 ; 0.01 ; 100 ; 0.10 ; 103 ; 1.14 ; 137 ; 5 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "275 ; 1  ; 1 ; 0.84 ; 413 ; 1 ; 4 ; 41 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 103 ; 1.18 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.84 ; 413 ; 1 ; 4 ; 41 ; 6 ; 0.16 ; 97 ; 0.01 ; 100 ; 0.15 ; 103 ; 1.18 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "275 ; 1  ; 1 ; 0.76 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.12 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.76 ; 413 ; 1 ; 4 ; 32 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.12 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "275 ; 1  ; 1 ; 0.82 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.06 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.82 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.06 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "275 ; 1  ; 1 ; 0.88 ; 413 ; 1 ; 4 ; 47 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.05 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.88 ; 413 ; 1 ; 4 ; 47 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.05 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "275 ; 1  ; 1 ; 0.78 ; 413 ; 1 ; 4 ; 48 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.78 ; 413 ; 1 ; 4 ; 48 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "275 ; 1  ; 1 ; 0.94 ; 413 ; 1 ; 4 ; 13 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.94 ; 413 ; 1 ; 4 ; 13 ; 6 ; 0.05 ; 97 ; 0.01 ; 100 ; 0.50 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 49 ; 6 ; 0.15 ; 97 ; 0.01 ; 103 ; 1.22 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 49 ; 6 ; 0.15 ; 97 ; 0.01 ; 103 ; 1.22 ; 137 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "275 ; 1  ; 1 ; 0.86 ; 413 ; 1 ; 4 ; 44 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.86 ; 413 ; 1 ; 4 ; 44 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 9:
 				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 107, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.90 ; 137 ; 5 ; 104 ; 0.80 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 		}
@@ -521,25 +666,25 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "275 ; 1  ; 2 ; 0.60 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 0.60 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.17 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.35 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.17 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.35 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.30 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.30 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.11 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.20 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.11 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.20 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 48 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.20 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 48 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.20 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.05 ; 97 ; 0.01  ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.05 ; 97 ; 0.01  ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.24 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.24 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 47 ; 6 ; 0.13 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 47 ; 6 ; 0.13 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 		}
 	}
 	PrintToServer("RandomDanmaku(client)");
@@ -657,25 +802,25 @@ BlitzkriegBarrage(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "275 ; 1  ; 1 ; 0.30 ; 413 ; 1 ; 4 ; 30 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.30 ; 413 ; 1 ; 4 ; 30 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "275 ; 1  ; 1 ; 0.35 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.07 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.15 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.35 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.07 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.15 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.45 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.45 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.01 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.80 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.01 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.80 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.75 ; 104 ; 0.65 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.75 ; 104 ; 0.65 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 58 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 58 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.05 ; 97 ; 0.01  ; 104 ; 0.65 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.45 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.05 ; 97 ; 0.01  ; 104 ; 0.65 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 52 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 52 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.20 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.20 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 57 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.50 ; 104 ; 0.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 57 ; 6 ; 0.03 ; 97 ; 0.01 ; 100 ; 0.50 ; 104 ; 0.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 		}
 	}
 	else if (weapondifficulty==5) // YOU MUST BE DREAMING TO EVEN TRY THIS!
@@ -683,25 +828,25 @@ BlitzkriegBarrage(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 105, 5, "275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.40 ; 413 ; 1 ; 4 ; 35 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 3"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 105, 5, "275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 105, 5, "275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.50 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 105, 5, "275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 105, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.75 ; 104 ; 0.85 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.75 ; 104 ; 0.85 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 105, 5, "275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 68 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.10 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 68 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.10 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 105, 5, "275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.06 ; 97 ; 0.01  ; 104 ; 0.85 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.55 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.06 ; 97 ; 0.01  ; 104 ; 0.85 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 105, 5, "275 ; 1  ; 1 ; 0.65 ; 413 ; 1 ; 4 ; 62 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.15 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.65 ; 413 ; 1 ; 4 ; 62 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.15 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.14 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.14 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 105, 5, "275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 67 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.50 ; 104 ; 0.90 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 105, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 67 ; 6 ; 0.06 ; 97 ; 0.01 ; 100 ; 0.50 ; 104 ; 0.90 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 		}
 	}
 	else if (weapondifficulty==6) // I THINK YOU LOST IT ALREADY!
@@ -709,25 +854,25 @@ BlitzkriegBarrage(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 106, 5, "275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.01 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.60 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.01 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 106, 5, "275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.07 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.35 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.07 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.35 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 106, 5, "275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.30 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.70 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.30 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 106, 5, "275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.20 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.75 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.20 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 106, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 106, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 78 ; 6 ; 0.04 ; 97 ; 0.01 ; 103 ; 1.20 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 78 ; 6 ; 0.04 ; 97 ; 0.01 ; 103 ; 1.20 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 106, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 70 ; 6 ; 0.04 ; 97 ; 0.01  ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 70 ; 6 ; 0.04 ; 97 ; 0.01  ; 103 ; 1.05 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 106, 5, "275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 72 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.85 ; 413 ; 1 ; 4 ; 72 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.25 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 75 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.24 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.80 ; 413 ; 1 ; 4 ; 75 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.24 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 106, 5, "275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 77 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 106, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 77 ; 6 ; 0.04 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.10 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 		}
 	}
 	else if (weapondifficulty==7) // WAKE UP!!!! PLEASE WAKE UP!!!
@@ -735,25 +880,25 @@ BlitzkriegBarrage(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "275 ; 1  ; 1 ; 0.95 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.65 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.95 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.30 ; 103 ; 1.65 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.60 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.90 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.45 ; 103 ; 1.60 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "275 ; 1  ; 1 ; 0.95 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.50 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "208 ; 1 ; 275 ; 1  ; 1 ; 0.95 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.60 ; 103 ; 1.50 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "275 ; 1  ; 2 ; 1.10 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.40 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.10 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.75 ; 103 ; 1.40 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "275 ; 1  ; 2 ; 1.15 ; 413 ; 1 ; 4 ; 88 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.50 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.15 ; 413 ; 1 ; 4 ; 88 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.50 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "275 ; 1  ; 2 ; 1.25 ; 413 ; 1 ; 4 ; 80 ; 6 ; 0.02 ; 97 ; 0.01  ; 103 ; 1.60 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.25 ; 413 ; 1 ; 4 ; 80 ; 6 ; 0.02 ; 97 ; 0.01  ; 103 ; 1.60 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "275 ; 1  ; 2 ; 1.05 ; 413 ; 1 ; 4 ; 82 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.50 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.05 ; 413 ; 1 ; 4 ; 82 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.70 ; 103 ; 1.50 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "275 ; 1  ; 2 ; 1.20 ; 413 ; 1 ; 4 ; 85 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.48 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.20 ; 413 ; 1 ; 4 ; 85 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.20 ; 103 ; 1.48 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002; 2014 ; 4"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 107, 5, "275 ; 1  ; 2 ; 1.30 ; 413 ; 1 ; 4 ; 87 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 107, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.30 ; 413 ; 1 ; 4 ; 87 ; 6 ; 0.02 ; 97 ; 0.01 ; 100 ; 0.50 ; 103 ; 1.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 		}
 	}
 	else if (weapondifficulty==8) // ARE YOU SERIOUS? 
@@ -761,25 +906,25 @@ BlitzkriegBarrage(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "275 ; 1  ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.15 ; 137 ; 20 ; 411 ; 15 ; 37 ; 0 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "275 ; 1  ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.30 ; 103 ; 2.65 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.30 ; 103 ; 2.65 ; 137 ; 20 ; 411 ; 13 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "275 ; 1  ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.45 ; 103 ; 2.60 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.45 ; 103 ; 2.60 ; 137 ; 20 ; 411 ; 11 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "275 ; 1  ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.60 ; 103 ; 2.50 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.60 ; 103 ; 2.50 ; 137 ; 20 ; 411 ; 8 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "275 ; 1  ; 2 ; 2.10 ; 413 ; 1 ; 4 ; 70 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.75 ; 103 ; 2.40 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.10 ; 413 ; 1 ; 4 ; 70 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.75 ; 103 ; 2.40 ; 137 ; 20 ; 411 ; 5 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "275 ; 1  ; 2 ; 2.15 ; 413 ; 1 ; 4 ; 98 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.50 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.15 ; 413 ; 1 ; 4 ; 98 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.50 ; 100 ; 0.10 ; 137 ; 20 ; 411 ; 25 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "275 ; 1  ; 2 ; 2.25 ; 413 ; 1 ; 4 ; 90 ; 6 ; 0.00 ; 97 ; 0.00  ; 103 ; 2.60 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.25 ; 413 ; 1 ; 4 ; 90 ; 6 ; 0.00 ; 97 ; 0.00  ; 103 ; 2.60 ; 137 ; 20 ; 411 ; 20 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "275 ; 1  ; 2 ; 2.05 ; 413 ; 1 ; 4 ; 92 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.70 ; 103 ; 2.50 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.05 ; 413 ; 1 ; 4 ; 92 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.70 ; 103 ; 2.50 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "275 ; 1  ; 2 ; 2.20 ; 413 ; 1 ; 4 ; 95 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.20 ; 103 ; 2.48 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.20 ; 413 ; 1 ; 4 ; 95 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.20 ; 103 ; 2.48 ; 137 ; 20 ; 411 ; 35 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "275 ; 1  ; 2 ; 2.30 ; 413 ; 1 ; 4 ; 97 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.50 ; 103 ; 2.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "208 ; 1 ; 275 ; 1  ; 2 ; 2.30 ; 413 ; 1 ; 4 ; 97 ; 6 ; 0.00 ; 97 ; 0.00 ; 100 ; 0.50 ; 103 ; 2.70 ; 137 ; 20 ; 411 ; 30 ; 37 ; 0 ;  2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 		}
 	}
 	PrintToServer("BlitzkriegBarrage(client)");
@@ -1003,101 +1148,6 @@ public Action:StopAll(Handle:hTimer,any:index)
 	return Plugin_Stop;
 }
 
-ClassResponses(client)
-{
-	PrintToServer("ClassResponses(client)");
-	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=BossTeam)
-	{
-		if(TF2_GetPlayerClass(client)==TFClass_Scout)
-		{
-			switch (GetRandomInt(0,1))
-			{
-				case 0:
-					EmitSoundToAll(SCOUT_R1,client);
-				case 1:
-					EmitSoundToAll(SCOUT_R2,client);
-			}
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
-		{
-			EmitSoundToAll(SOLLY_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Pyro)
-		{
-			EmitSoundToAll(PYRO_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_DemoMan)
-		{
-			EmitSoundToAll(DEMO_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Heavy)
-		{
-			switch (GetRandomInt(0,1))
-			{
-				case 0:
-					EmitSoundToAll(HEAVY_R1,client);
-				case 1:	
-					EmitSoundToAll(HEAVY_R2,client);
-			}
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Engineer)
-		{
-			switch (GetRandomInt(0,1))
-			{
-				case 0:
-					EmitSoundToAll(ENGY_R1,client);
-				case 1:
-					EmitSoundToAll(ENGY_R2,client);
-			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Medic)
-		{
-			switch (GetRandomInt(0,4))
-			{
-				case 0:
-					EmitSoundToAll(MEDIC_R1,client);
-				case 1:
-					EmitSoundToAll(MEDIC_R2,client);
-				case 2:
-					EmitSoundToAll(MEDIC_R3,client);
-				case 3:
-					EmitSoundToAll(MEDIC_R4,client);
-				case 4:
-					EmitSoundToAll(MEDIC_R5,client);
-			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Sniper)
-		{
-			switch (GetRandomInt(0,2))
-			{
-				case 0:
-					EmitSoundToAll(SNIPER_R1,client);
-				case 1:
-					EmitSoundToAll(SNIPER_R2,client);
-				case 2:
-					EmitSoundToAll(SNIPER_R3,client);
-			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Spy)
-		{
-			switch (GetRandomInt(0,4))
-			{
-				case 0:
-					EmitSoundToAll(SPY_R1,client);
-				case 1:
-					EmitSoundToAll(SPY_R2,client);
-				case 2:
-					EmitSoundToAll(SPY_R3,client);
-				case 3:
-					EmitSoundToAll(SPY_R4,client);
-				case 4:
-					EmitSoundToAll(SPY_R5,client);
-				case 5:
-					EmitSoundToAll(SPY_R6,client);
-			}						
-		}
-	}
-}
 
 public Action:ItzBlitzkriegTime(Handle:hTimer,any:index)
 {
@@ -1133,6 +1183,8 @@ public Action:Rage_Timer_UnuseCharge(Handle:hTimer,any:index)
 	SetEntProp(Boss, Prop_Data, "m_takedamage", 2);
 	return Plugin_Continue;
 }
+
+// TF2items
 
 public Action:TF2Items_OnGiveNamedItem(client, String:classname[], iItemDefinitionIndex, &Handle:item)
 {
