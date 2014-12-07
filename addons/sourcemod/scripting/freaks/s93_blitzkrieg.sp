@@ -657,9 +657,9 @@ RandomDanmaku(client)
 			case 2:
 				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.04 ; 4 ; 5 ; 6 ; 0.14 ; 97 ; 0.01 ; 100 ; 0.30 ; 104 ; 0.35"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 6 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.30"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 6 ; 6 ; 0.12 ; 97 ; 0.01 ; 100 ; 0.45 ; 104 ; 0.40"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.07 ; 4 ; 7.5 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.30"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.07 ; 4 ; 7.5 ; 6 ; 0.10 ; 97 ; 0.01 ; 100 ; 0.60 ; 104 ; 0.20"));
 			case 5:
 				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.04 ; 413 ; 1 ; 4 ; 8 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.25 ; 104 ; 0.50"));
 			case 6:
@@ -667,9 +667,9 @@ RandomDanmaku(client)
 			case 7:
 				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.07 ; 4 ; 8.5 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.29"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 11 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.40 ; 104 ; 0.10"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 11 ; 6 ; 0.08 ; 97 ; 0.01 ; 100 ; 0.40 ; 104 ; 0.25"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.04 ; 4 ; 6.5 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.35 ; 104 ; 0.05"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 100, 5, "2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.04 ; 4 ; 6.5 ; 6 ; 0.20 ; 97 ; 0.01 ; 100 ; 0.35 ; 104 ; 0.30"));
 		}
 	}
 	else if (weapondifficulty==2) // Normal
@@ -755,25 +755,25 @@ RandomDanmaku(client)
 		switch (GetRandomInt(0,9))
 		{
 			case 0:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.20 ; 4 ; 17 ; 6 ; 0.18 ; 97 ; 0.01 ; 104 ; 0.52"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.20 ; 4 ; 17 ; 6 ; 0.18 ; 97 ; 0.01 ; 104 ; 0.52"));
 			case 1:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.22 ; 4 ; 19 ; 6 ; 0.16 ; 97 ; 0.01 ; 104 ; 0.49"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.22 ; 4 ; 19 ; 6 ; 0.16 ; 97 ; 0.01 ; 104 ; 0.49"));
 			case 2:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.18 ; 4 ; 20 ; 6 ; 0.14 ; 97 ; 0.01 ; 104 ; 0.46"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.18 ; 4 ; 20 ; 6 ; 0.14 ; 97 ; 0.01 ; 104 ; 0.46"));
 			case 3:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.21 ; 4 ; 22 ; 6 ; 0.12 ; 97 ; 0.01 ; 104 ; 0.43"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.21 ; 4 ; 22 ; 6 ; 0.12 ; 97 ; 0.01 ; 104 ; 0.43"));
 			case 4:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.24 ; 4 ; 25 ; 6 ; 0.10 ; 97 ; 0.01 ; 104 ; 0.40"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.24 ; 4 ; 25 ; 6 ; 0.10 ; 97 ; 0.01 ; 104 ; 0.40"));
 			case 5:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.19 ; 4 ; 26 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.60"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.19 ; 4 ; 26 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.60"));
 			case 6:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.27 ; 4 ; 23 ; 6 ; 0.05 ; 97 ; 0.01 ; 104 ; 0.55"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.27 ; 4 ; 23 ; 6 ; 0.05 ; 97 ; 0.01 ; 104 ; 0.55"));
 			case 7:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.25 ; 4 ; 27 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.22"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.25 ; 4 ; 27 ; 6 ; 0.15 ; 97 ; 0.01 ; 104 ; 0.22"));
 			case 8:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.23 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.23 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
 			case 9:
-				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.20 ; 4 ; 23 ; 6 ; 0.20 ; 97 ; 0.01 ; 104 ; 0.20"));
+				SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 137 ; 5 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.20 ; 4 ; 23 ; 6 ; 0.20 ; 97 ; 0.01 ; 104 ; 0.20"));
 		}
 	}
 	else if (weapondifficulty==6) // YOU MUST BE DREAMING TO EVEN TRY THIS!
@@ -1185,7 +1185,7 @@ CustomWeapons(client)
 				case 1104: // Air Strike
 				{
 					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-					weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 150 ; 621 ; 1 ; 644 ; 1");
+					weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 3 ; 621 ; 1 ; 644 ; 1");
 					// 2: +25% Damage Bonus
 					// 15: No Random Critical Hits
 					// 488: Rocket Specialist
@@ -1230,7 +1230,7 @@ CustomWeapons(client)
 		{
 			weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
 			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-			weapon=SpawnWeapon(client, "tf_weapon_medigun", 29, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 150 ; 493 ; 150");
+			weapon=SpawnWeapon(client, "tf_weapon_medigun", 29, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
 				//499: Projectile Shield
 				//10: +25% faster charge rate
 				//178: +25% faster weapon switch
@@ -1320,62 +1320,62 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Timer before reanimator expires
 				if(weapondifficulty==1)
 				{
-					CPrintToChatAll("Level 1: Easy");
+					CPrintToChatAll("Blitzkrieg's Level: Easy");
 				}
 				else if(weapondifficulty==2)
 				{
-					CPrintToChatAll("Level 2: Normal");
+					CPrintToChatAll("Blitzkrieg's Level: Normal");
 				}
 				else if(weapondifficulty==3)
 				{
-					CPrintToChatAll("Level 3: Intermediate");
+					CPrintToChatAll("Blitzkrieg's Level: Intermediate");
 				}
 				else if(weapondifficulty==4)
 				{
-					CPrintToChatAll("Level 4: Difficult");
+					CPrintToChatAll("Blitzkrieg's Level: Difficult");
 				}
 				else if(weapondifficulty==5)
 				{
-					CPrintToChatAll("Level 5: Lunatic");
+					CPrintToChatAll("Blitzkrieg's Level: Lunatic");
 				}
 				else if(weapondifficulty==6)
 				{
-					CPrintToChatAll("Level 6: Extreme");
+					CPrintToChatAll("Blitzrieg's Level: Extreme");
 				}
 				else if(weapondifficulty==7)
 				{
-					CPrintToChatAll("Level 7: Godlike");
+					CPrintToChatAll("Blitzkrieg's Level: Godlike");
 				}
 				else if(weapondifficulty==8)
 				{
-					CPrintToChatAll("Level 8: Rocket Hell");
+					CPrintToChatAll("Blitzkrieg's Level: Rocket Hell");
 				}
 				else if(weapondifficulty==9)
 				{
-					CPrintToChatAll("Level 9: Total Blitzkrieg");
+					CPrintToChatAll("Blitzkrieg's Level: Total Blitzkrieg");
 				}
 				else if(weapondifficulty==0)
 				{
 					switch (GetRandomInt(0,8))
 					{
 						case 0:
-							weapondifficulty=1, CPrintToChatAll("Level 1: Easy");
+							weapondifficulty=1, CPrintToChatAll("Blitzkrieg's Level: Easy");
 						case 1:
-							weapondifficulty=2, CPrintToChatAll("Level 2: Normal");
+							weapondifficulty=2, CPrintToChatAll("Blitzkrieg's Level: Normal");
 						case 2:
-							weapondifficulty=3, CPrintToChatAll("Level 3: Intermediate");
+							weapondifficulty=3, CPrintToChatAll("Blitzkrieg's Level: Intermediate");
 						case 3:
-							weapondifficulty=4, CPrintToChatAll("Level 4: Difficult");
+							weapondifficulty=4, CPrintToChatAll("Blitzkrieg's Level: Difficult");
 						case 4:
-							weapondifficulty=5, CPrintToChatAll("Level 5: Lunatic");
+							weapondifficulty=5, CPrintToChatAll("Blitzkrieg's Level: Lunatic");
 						case 5:
-							weapondifficulty=6, CPrintToChatAll("Level 6: Extreme");
+							weapondifficulty=6, CPrintToChatAll("Blitzkrieg's Level: Extreme");
 						case 6:
-							weapondifficulty=7, CPrintToChatAll("Level 7: Godlike");
+							weapondifficulty=7, CPrintToChatAll("Blitzkrieg's Level: Godlike");
 						case 7:
-							weapondifficulty=8, CPrintToChatAll("Level 8: Rocket Hell");
+							weapondifficulty=8, CPrintToChatAll("Blitzkrieg's Level: Rocket Hell");
 						case 8:
-							weapondifficulty=9, CPrintToChatAll("Level 9: Total Blitzkrieg");
+							weapondifficulty=9, CPrintToChatAll("Blitzkrieg's Level: Total Blitzkrieg");
 					}
 				}
 				if(combatstyle!=0)
@@ -1420,43 +1420,104 @@ public PreDeath(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			if(StrEqual(weapon, "tf_projectile_rocket", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "airstrike", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "liberty_launcher", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "quake_rl", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "blackbox", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "dumpster_device", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "rocketlauncher_directhit", false))
 			{
-				SetEventString(event, "weapon", "spellbook_meteor");
-				SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				if(weapondifficulty!=3)
+				{
+					SetEventString(event, "weapon", "merasmus_zap");
+					SetEventString(event, "weapon_logclassname", "merasmus_zap");
+				}
+				else 
+				{
+					SetEventString(event, "weapon", "spellbook_meteor");
+					SetEventString(event, "weapon_logclassname", "spellbook_meteor");
+				}
 			}
 			else if(StrEqual(weapon, "ubersaw", false))
 			{
 				SetEventString(event, "weapon", "taunt_medic");
 				SetEventString(event, "weapon_logclassname", "taunt_medic");
+			}
+			else if(StrEqual(weapon, "flamethrower", false))
+			{
+				SetEventString(event, "weapon", "merasmus_zap");
+				SetEventString(event, "weapon_logclassname", "merasmus_zap");
 			}
 		}
 	}
