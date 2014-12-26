@@ -1117,7 +1117,7 @@ CustomWeapons(client)
 				{
 					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
 					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-					weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 5, 10, "26 ; 50 ; 319 ; 2.50");
+					weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
 					PrintHintText(client, "+150% longer buff duration, +50 Max HP");
 				}
 				case 226: // Battalion's Backup
@@ -1131,7 +1131,7 @@ CustomWeapons(client)
 				{
 					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
 					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-					weapon=SpawnWeapon(client, "tf_weapon_lunchbox", 354, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
+					weapon=SpawnWeapon(client, "tf_weapon_buff_item", 354, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
 					PrintHintText(client, "+150% longer buff duration, +50 Max HP");
 				}
 				case 1153: // Panic Attack
