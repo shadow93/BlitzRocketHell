@@ -22,8 +22,7 @@
 #define MB 3
 #define ME 2048
 #undef REQUIRE_PLUGIN
-#include <updater>
-
+#tryinclude <updater>
 
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
@@ -76,17 +75,24 @@ new voicelines;
 new danmakuboss;
 new blitzkriegrage;
 new miniblitzkriegrage;
-new BossTeam=_:TFTeam_Blue;
-//new OtherTeam=_:TFTeam_Red;
+new startmode;
+// So Blitzkrieg works properly independent of assigned team
+new BossTeam;
 
+// To prevent a rare weapon inheritance bug
+new bool:barrage = false;
+
+// Version Number
 #define MAJOR_REVISION "1"
-#define MINOR_REVISION "79"
+#define MINOR_REVISION "80"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
-
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
 
+#if defined _updater_included
 #define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
+#define DEBUG   // This will enable verbose logging. Useful for developers testing their updates. 
+#endif
 
 public OnMapStart()
 {
@@ -146,29 +152,32 @@ public OnPluginStart2()
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_death", PreDeath, EventHookMode_Pre);
-	PrintToServer("************************************************************************");
-	PrintToServer("--------------------FREAK FORTRESS 2: THE BLITZKRIEG--------------------");
-	PrintToServer("-----------BETA 1.79 - STABLE VERSION - BY SHADoW NiNE TR3S-------------");
-	PrintToServer("------------------------------------------------------------------------");
-	PrintToServer("-if you encounter bugs or see errors in console relating to this plugin-");
-	PrintToServer("-please post them in Blitzkrieg's Github Repository which can be found--");
-	PrintToServer("---------at https://github.com/shadow93/tf2danmaku/tree/master=---------");
-	PrintToServer("---------or make a post on his AlliedModders thread at------------------");
-	PrintToServer("--------https://forums.alliedmods.net/showthread.php?t=248320-----------");
-	PrintToServer("************************************************************************");
+	#if defined _updater_included
 	if (LibraryExists("updater"))
     {
 		Updater_AddPlugin(UPDATE_URL);
-		PrintToServer("Checking for updates for TF2 Danmaku");
 	}
+	#endif
 }
 
 public OnLibraryAdded(const String:name[])
 {
+	#if defined _updater_included
     if (StrEqual(name, "updater"))
     {
         Updater_AddPlugin(UPDATE_URL);
     }
+	#endif
+}
+
+public OnLibraryRemoved(const String:name[])
+{
+	#if defined _updater_included
+	if(StrEqual(name, "updater"))
+	{
+		Updater_RemovePlugin();
+	}
+	#endif
 }
 
 
@@ -180,91 +189,21 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 	{	
 		if (FF2_GetRoundState()==1)
 		{
+			barrage=true;
 			new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 			TF2_AddCondition(Boss,TFCond_Ubercharged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Ubercharge
 			CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0),RemoveUber,index);
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
 			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			//Switching Blitzkrieg's player class while retaining the same model to switch the voice responses/commands
-			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
-			{
-				TF2_SetPlayerClass(Boss, TFClass_Soldier);
-				switch (GetRandomInt(0,2))	
-				{
-					case 0:
-						EmitSoundToAll(SWITCHSOLA);
-					case 1:
-						EmitSoundToAll(SWITCHSOLB);
-					case 2:
-						EmitSoundToAll(SWITCHSOLC);
-				}
-			}
-			else if(TF2_GetPlayerClass(Boss)==TFClass_Soldier)
-			{
-				TF2_SetPlayerClass(Boss, TFClass_Medic);
-				switch (GetRandomInt(0,2))	
-				{
-					case 0:
-						EmitSoundToAll(SWITCHMEDA);
-					case 1:
-						EmitSoundToAll(SWITCHMEDB);
-					case 2:
-						EmitSoundToAll(SWITCHMEDC);
-				}				
-			}
-			// Removing unwanted weapons
-			TF2_RemoveAllWeapons(Boss);
-			// ONLY FOR LEGACY REASONS, FF2 1.10.3 and newer doesn't actually need this to restore the boss model.
-			SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
-			AcceptEntityInput(Boss, "SetCustomModel");
-			SetEntProp(Boss, Prop_Send, "m_bUseClassAnimations", 1);
-			// Removing all wearables
-			new entity, owner;
-			while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
-			{
-				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
-				{
-					TF2_RemoveWearable(owner, entity);
-				}
-			}
-			while((entity=FindEntityByClassname(entity, "tf_wearable_demoshield"))!=-1)
-			{
-				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
-				{
-					TF2_RemoveWearable(owner, entity);
-				}
-			}
-			while((entity=FindEntityByClassname(entity, "tf_powerup_bottle"))!=-1)
-			{
-				if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
-				{
-					TF2_RemoveWearable(owner, entity);
-				}
-			}
-			// Restoring Melee (if using hybrid style), otherwise, giving Blitzkrieg just the death effect rocket launchers.
-			// Also restores his B.A.S.E. Jumper
-			BlitzkriegBarrage(Boss);
-			SpawnWeapon(Boss, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
-			switch(combatstyle)
-			{
-				case 1:
-				{
-					crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
-					SetAmmo(Boss, TFWeaponSlot_Primary,999999);
-				}
-				case 0:
-				{
-					SpawnWeapon(Boss, "tf_weapon_knife", 1003, 109, 5, "2 ; 3 ; 138 ; 0.5 ; 39 ; 0.3 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-					SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
-				}
-			}
+			PlotTwist(Boss);
+			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
 			//For the Class Reaction Voice Lines
 			switch(voicelines)
 			{
 				case 1:
 				{
-					decl i;
-					for( i = 1; i <= MaxClients; i++ )
+					for(new i = 1; i <= MaxClients; i++ )
 					{
 						ClassResponses(i);
 					}
@@ -272,8 +211,6 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 				case 0:
 					EmitSoundToAll(BLITZKRIEG_SND);
 			}
-			//Development Purposes
-			PrintToServer("*blitzkrieg_barrage*");
 		}
 		else if (FF2_GetRoundState()==2)
 		{
@@ -314,11 +251,10 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 				}				
 			}
 			// Weapon switch depending if Blitzkrieg Barrage is active or not
-			if(crockethell!=INVALID_HANDLE)
+			if(barrage==true)
 			{
 				BlitzkriegBarrage(Boss);
-				SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
-				PrintToServer("*blitzkrieg*");
+				SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
 			}
 			else
 			{
@@ -330,14 +266,12 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 					case 0:
 						SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
 				}
-				PrintToServer("*mini blitzkrieg*");
 			}
 			switch(voicelines)
 			{
 				case 1:
 				{
-					decl i;
-					for( i = 1; i <= MaxClients; i++ )
+					for(new i = 1; i <= MaxClients; i++ )
 					{
 						ClassResponses(i);
 					}
@@ -449,6 +383,102 @@ ClassResponses(client)
 		}
 	}
 }
+
+// Switch Roles ability
+PlotTwist(client)
+{
+	if(barrage==true)
+	{
+		if(TF2_GetPlayerClass(client)==TFClass_Medic)
+		{
+			TF2_SetPlayerClass(client, TFClass_Soldier);
+			switch (GetRandomInt(0,2))	
+			{
+				case 0:
+					EmitSoundToAll(SWITCHSOLA);
+				case 1:
+					EmitSoundToAll(SWITCHSOLB);
+				case 2:
+					EmitSoundToAll(SWITCHSOLC);
+			}
+		}
+		else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
+		{
+			TF2_SetPlayerClass(client, TFClass_Medic);
+			switch (GetRandomInt(0,2))	
+			{
+				case 0:
+					EmitSoundToAll(SWITCHMEDA);
+				case 1:
+					EmitSoundToAll(SWITCHMEDB);
+				case 2:
+					EmitSoundToAll(SWITCHMEDC);
+			}				
+		}
+	}
+	else
+	{
+		switch (GetRandomInt(0,1))	
+		{
+			case 0:
+				TF2_SetPlayerClass(client, TFClass_Medic);
+			case 1:
+				TF2_SetPlayerClass(client, TFClass_Soldier);
+		}
+	}
+	TF2_RemoveAllWeapons(client);
+	// ONLY FOR LEGACY REASONS, FF2 1.10.3 and newer doesn't actually need this to restore the boss model.
+	SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
+	AcceptEntityInput(client, "SetCustomModel");
+	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
+	// Removing all wearables
+	new entity, owner;
+	while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
+	{
+		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+		{
+			TF2_RemoveWearable(owner, entity);
+		}
+	}
+	while((entity=FindEntityByClassname(entity, "tf_wearable_demoshield"))!=-1)
+	{
+		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+		{
+			TF2_RemoveWearable(owner, entity);
+		}
+	}
+	while((entity=FindEntityByClassname(entity, "tf_powerup_bottle"))!=-1)
+	{
+		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==BossTeam)
+		{
+			TF2_RemoveWearable(owner, entity);
+		}
+	}
+	// Restoring Melee (if using hybrid style), otherwise, giving Blitzkrieg just the death effect rocket launchers.
+	// Also restores his B.A.S.E. Jumper
+	SpawnWeapon(client, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
+	if(barrage==true)
+		BlitzkriegBarrage(client);
+	else
+		if(startmode==1)
+			RandomDanmaku(client);
+	switch(combatstyle)
+	{
+		case 1:
+			SetAmmo(client, TFWeaponSlot_Primary,999999);
+		case 0:
+		{
+			if(TF2_GetPlayerClass(client)==TFClass_Medic)
+				SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 3 ; 138 ; 0.5 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+			else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
+				SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 3 ; 138 ; 0.5 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+			if(barrage==true)
+				SetAmmo(client, TFWeaponSlot_Primary,blitzkriegrage);
+			else
+				SetAmmo(client, TFWeaponSlot_Primary,miniblitzkriegrage);
+		}
+	}	
+}		
 
 // This is the weapon configs for Blitzkrieg's starter weapons & switch upon rage or after Blitzkrieg ability wears off
 RandomDanmaku(client)
@@ -696,7 +726,6 @@ RandomDanmaku(client)
 			}
 		}
 	}
-	PrintToServer("TF2 Danmaku: RandomDanmaku(client)");
 }
 
 // Blitzkrieg's much more powerful weapons whenever he loses a life. This is his weapon config
@@ -945,7 +974,6 @@ BlitzkriegBarrage(client)
 			}
 		}
 	}
-	PrintToServer("TF2 Danmaku: BlitzkriegBarrage(client)");
 }
 
 // Custom Weapon Stuff
@@ -955,7 +983,7 @@ CustomWeapons(client)
 	new index=-1;
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=BossTeam)
 	{
-		// Soldier Stuff
+		// Soldier Rocket Launchers
 		if(TF2_GetPlayerClass(client)==TFClass_Soldier)
 		{
 			weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
@@ -1057,8 +1085,79 @@ CustomWeapons(client)
 				}
 			}
 		}
+		// Panic Attack, Flare Guns & Buff Banners
+		if(TF2_GetPlayerClass(client)==TFClass_Soldier||TF2_GetPlayerClass(client)==TFClass_Pyro||TF2_GetPlayerClass(client)==TFClass_Heavy||TF2_GetPlayerClass(client)==TFClass_Engineer)
+		{
+			if(TF2_GetPlayerClass(client)==TFClass_Soldier||TF2_GetPlayerClass(client)==TFClass_Pyro||TF2_GetPlayerClass(client)==TFClass_Heavy)
+			{
+				weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+			}
+			if(TF2_GetPlayerClass(client)==TFClass_Engineer)
+			{
+				weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
+			}
+			index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+			switch(index)
+			{
+				case 39, 351, 740, 1081: // Flaregun, Detonator, Scorch Shot & Festive Flare Gun
+				{
+					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+					weapon=SpawnWeapon(client, "tf_weapon_flaregun", 351, 5, 10, "1 ; 0.75 ; 25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 3.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
+					PrintHintText(client, "Detonator deals crits while players are on fire. Cannot randomly crit. -25% damage penalty.");
+				}
+				case 42, 863, 1002: // Sandvich, Robo-Sandvich & Festive Sandvich
+				{
+					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+					weapon=SpawnWeapon(client, "tf_weapon_lunchbox", 42, 5, 10, "144 ; 4 ; 278 ; 0.5");
+					PrintHintText(client, "+50% Faster Sandvich Regen Rate");
+				}
+				case 129, 1001: // Buff Banner
+				{
+					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+					weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 5, 10, "26 ; 50 ; 319 ; 2.50");
+					PrintHintText(client, "+150% longer buff duration, +50 Max HP");
+				}
+				case 226: // Battalion's Backup
+				{
+					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+					weapon=SpawnWeapon(client, "tf_weapon_buff_item", 226, 5, 10, "26 ; 50 ; 116 ; 2 ; 292 ; 51 ; 319 ; 2.50");
+					PrintHintText(client, "+150% longer buff duration, +50 Max HP");
+				}
+				case 354: // Concheror
+				{
+					weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+					weapon=SpawnWeapon(client, "tf_weapon_lunchbox", 354, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
+					PrintHintText(client, "+150% longer buff duration, +50 Max HP");
+				}
+				case 1153: // Panic Attack
+				{
+					if(TF2_GetPlayerClass(client)==TFClass_Soldier||TF2_GetPlayerClass(client)==TFClass_Pyro||TF2_GetPlayerClass(client)==TFClass_Heavy)
+					{
+						weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+						TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+						if(TF2_GetPlayerClass(client)==TFClass_Soldier)
+							weapon=SpawnWeapon(client, "tf_weapon_shotgun_soldier", 1153, 5, 10, "97 ; 0.77 ; 107 ; 1.70 ; 128 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 414 ; 1 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
+						if(TF2_GetPlayerClass(client)==TFClass_Pyro)
+							weapon=SpawnWeapon(client, "tf_weapon_shotgun_pyro", 1153, 5, 10, "97 ; 0.77 ; 107 ; 1.70 ; 128 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 414 ; 1 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
+						if(TF2_GetPlayerClass(client)==TFClass_Heavy)
+							weapon=SpawnWeapon(client, "tf_weapon_shotgun_hwg", 1153, 5, 10, "97 ; 0.77 ; 107 ; 1.70 ; 128 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 414 ; 1 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
+					}
+					if(TF2_GetPlayerClass(client)==TFClass_Engineer)
+					{
+						weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
+						TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+						weapon=SpawnWeapon(client, "tf_weapon_shotgun_primary", 1153, 5, 10, "97 ; 0.77 ; 107 ; 1.70 ; 128 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 414 ; 1 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
+					}
+					PrintHintText(client, "+75% faster move speed during panic. When a medic healing you is killed, you gain minicrits for 15 seconds.");
+				}
+			}
+		}
 	}
-	PrintToServer("*Custom Weapons Active (customweapons==1)*");
 }
 
 
@@ -1125,13 +1224,15 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		{
 			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
 			{	
+				BossTeam = FF2_GetBossTeam();
+				barrage=false;
 				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
 				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
 				customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
 				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
 				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
 				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
-				new startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
 				switch(weapondifficulty)
 				{
 					case 0:
@@ -1182,42 +1283,17 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 					case 1:
 					{
 						PrintHintText(danmakuboss, "You must rely on your rockets to finish enemies off!");
-						TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Secondary);
-						SpawnWeapon(danmakuboss, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
-						TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Melee);
-						TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Primary);
-						RandomDanmaku(danmakuboss);
-						SetAmmo(danmakuboss, TFWeaponSlot_Primary,999999);
+						PlotTwist(danmakuboss);
 					}
 					case 0:
 					{
 						PrintHintText(danmakuboss, "Use your Ubersaw to finish off nearby enemies!");
-						TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Secondary);
-						SpawnWeapon(danmakuboss, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
-						TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Melee);
-						switch(startmode)
-						{
-							case 1:
-								{
-									SpawnWeapon(danmakuboss, "tf_weapon_knife", 1003, 109, 5, "2 ; 3 ; 138 ; 0.5 ; 39 ; 0.3 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-									TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Primary);
-									RandomDanmaku(danmakuboss);
-									SetAmmo(danmakuboss, TFWeaponSlot_Primary, miniblitzkriegrage);
-								}
-							case 0:
-								{
-									SetEntPropEnt(danmakuboss, Prop_Send, "m_hActiveWeapon", SpawnWeapon(danmakuboss, "tf_weapon_knife", 1003, 109, 5, "2 ; 3 ; 138 ; 0.5 ; 39 ; 0.3 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6"));
-									TF2_RemoveWeaponSlot(danmakuboss, TFWeaponSlot_Primary);
-								}
-								
-						}
-
+						PlotTwist(danmakuboss);
 					}
 				}
 				if(customweapons!=0)
 				{
-					decl i;
-					for( i = 1; i <= MaxClients; i++ )
+					for(new i = 1; i <= MaxClients; i++ )
 					{
 						CustomWeapons(i);
 						if(IsClientInGame(i) && IsPlayerAlive(i) && GetClientTeam(i)!=BossTeam)
@@ -1248,8 +1324,6 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 					}
 				}			
 			}
-			else
-				CreateTimer(2.5, StopAll);
 		}
 	}
 }
@@ -1333,7 +1407,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 				if(combatstyle!=0)
 				{	
 					TF2_RemoveWeaponSlot(attacker, TFWeaponSlot_Primary);
-					if(crockethell!=INVALID_HANDLE)
+					if(barrage==true)
 					{
 						BlitzkriegBarrage(attacker);
 						SetAmmo(attacker, TFWeaponSlot_Primary, blitzkriegrage);
@@ -1362,29 +1436,20 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 		KillTimer(crockethell);
 		crockethell = INVALID_HANDLE;
 	}
-	CreateTimer(2.0, StopAll);
+	barrage=false;
 	return Plugin_Continue;
 }
 
-
-// Timers
-public Action:StopAll(Handle:hTimer,any:index)
-{
-	if (crockethell!=INVALID_HANDLE)
-	{
-		KillTimer(crockethell);
-		crockethell = INVALID_HANDLE;
-	}
-	return Plugin_Stop;
-}
-
-
 public Action:ItzBlitzkriegTime(Handle:hTimer,any:index)
 {
-	new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
-	TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
-	RandomDanmaku(Boss);	
-	SetAmmo(Boss, TFWeaponSlot_Primary,999999);
+	if(combatstyle!=0)
+	{
+		new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
+		TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
+		RandomDanmaku(Boss);	
+		SetAmmo(Boss, TFWeaponSlot_Primary,999999);
+	}
+	barrage=false;
 	PrintToServer("ItzBlitzkriegTime(Handle:hTimer,any:index)");
 	crockethell = INVALID_HANDLE;
 }
