@@ -1657,6 +1657,8 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				miniblitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
 				blitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
 				startmode=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				allowrevive=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
+				decaytime=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
 				if(weapondifficulty==0)
 					switch (GetRandomInt(0,8))
 					{
