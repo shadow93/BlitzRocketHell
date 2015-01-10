@@ -84,7 +84,7 @@ new bool:blitzisboss = false;
 
 // Version Number
 #define MAJOR_REVISION "1"
-#define MINOR_REVISION "81"
+#define MINOR_REVISION "82"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
@@ -148,7 +148,6 @@ public Plugin:myinfo = {
 
 public OnPluginStart2()
 {
-	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_Pre);
 	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
@@ -1419,19 +1418,6 @@ stock bool:IsValidClient(client)
 	return true;
 }
 
-// Provision Only for revive marker entitys
-
-public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
-{
-	
-	new client=GetClientOfUserId(GetEventInt(event, "userid"));
-	if(blitzisboss==true)
-		CreateTimer(0.1, CheckItems, client);
-	else
-		return Plugin_Stop;
-	return Plugin_Continue;
-}
-
 public Action:CheckItems(Handle:hTimer, any:client)
 {
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
@@ -1461,42 +1447,22 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	// Here, we have a config for blitzkrieg's rounds //
 	if (FF2_IsFF2Enabled())
 	{
-		danmakuboss = GetClientOfUserId(FF2_GetBossUserId(GetEventInt(event, "userid")));
-		if (danmakuboss>GetEventInt(event, "userid"))
+		danmakuboss = GetClientOfUserId(FF2_GetBossUserId());
+		if (danmakuboss>0)
 		{
-			if (FF2_HasAbility(GetEventInt(event, "userid"), this_plugin_name, "blitzkrieg_config"))
+			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
 			{	
 				blitzisboss = true;
 				barrage = false;
-				weapondifficulty=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 1, 2);
-				combatstyle=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 2);
-				customweapons=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
-				voicelines=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
-				miniblitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
-				blitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
-				startmode=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
+				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
+				customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
+				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
 				if(weapondifficulty==0)
-					switch (GetRandomInt(0,8))
-					{
-						case 0:
-							weapondifficulty=1;
-						case 1:
-							weapondifficulty=2;
-						case 2:
-							weapondifficulty=3;
-						case 3:
-							weapondifficulty=4;
-						case 4:
-							weapondifficulty=5;
-						case 5:
-							weapondifficulty=6;
-						case 6:
-							weapondifficulty=7;
-						case 7:
-							weapondifficulty=8;
-						case 8:
-							weapondifficulty=9;
-					}
+					weapondifficulty=GetRandomInt(1,9);
 				switch(combatstyle)
 				{
 					case 1:
