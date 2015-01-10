@@ -66,6 +66,10 @@
 #define SPY_R4 "vo/Spy_sf13_magic_reac04.wav"
 #define SPY_R5 "vo/Spy_sf13_magic_reac05.wav"
 #define SPY_R6 "vo/Spy_sf13_magic_reac06.wav"
+
+#define BLITZROUNDSTART "freak_fortress_2/s93dm/eog_intro.mp3"
+#define BLITZROUNDEND	"freak_fortress_2/s93dm/eog_outtro.mp3"
+
 //Handles
 new Handle: crockethell;
 //Other Stuff
@@ -73,7 +77,7 @@ new customweapons;
 new combatstyle;
 new weapondifficulty;
 new voicelines;
-new danmakuboss;
+new dBoss;
 new blitzkriegrage;
 new miniblitzkriegrage;
 new startmode;
@@ -105,6 +109,10 @@ new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
 public OnMapStart()
 {
+	// ROUND EVENTS
+	PrecacheSound(BLITZROUNDSTART,true);
+	PrecacheSound(BLITZROUNDEND, true);
+	// RAGE GENERIC ALERTS
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
 	//When Blitzkrieg returns to his normal medic self
@@ -157,11 +165,14 @@ public Plugin:myinfo = {
 
 public OnPluginStart2()
 {
+	HookEvent("teamplay_round_start", OnSetupTime, EventHookMode_PostNoCopy);
 	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
+	HookEvent("teamplay_broadcast_audio", OnAnnounce, EventHookMode_Pre);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_death", PreDeath, EventHookMode_Pre);
-	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_Pre);
+	HookEvent("player_spawn", OnPlayerRevive, EventHookMode_Pre);
+	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_PostNoCopy);
 	HookEvent("player_changeclass", OnChangeClass);
 	RegConsoleCmd("ff2_hp", CheckLevel);
 	RegConsoleCmd("ff2hp", CheckLevel);
@@ -1373,12 +1384,23 @@ public bool:IsValidMarker(marker)
 	return false;
 }
 
-public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
+public Action:OnPlayerRevive(Handle:event, const String:name[], bool:dontbroadcast) 
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	if(blitzisboss==true)
 	{
 		RemoveReanimator(client);
+	}
+	else
+		return Plugin_Stop;
+	return Plugin_Continue;
+}
+
+public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
+{
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(blitzisboss==true)
+	{
 		CreateTimer(0.1, CheckItems, client);
 	}
 	else
@@ -1388,9 +1410,15 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 
 public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcast) 
 {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	ChangeClass[client] = true;
-	CreateTimer(0.1, CheckItems, client);
+	if(blitzisboss==true)
+	{
+		new client = GetClientOfUserId(GetEventInt(event, "userid"));
+		ChangeClass[client] = true;
+		CreateTimer(0.1, CheckItems, client);
+	}
+	else
+		return Plugin_Stop;
+	return Plugin_Continue;
 }
 
 public Action:TransmitMarker(Handle:timer, any:userid) {
@@ -1537,6 +1565,12 @@ DisplayCurrentDifficulty(client)
 			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Total Blitzkrieg");
 			PrintHintText(client,"Difficulty: Total Blitzkrieg");
 		}
+		default:
+		{
+			Format(msg, sizeof(msg), "Please wait until round has started to check difficulty!");
+			CPrintToChatAll("[FF2] The Blitzkrieg: Please wait until round has started!");
+			PrintHintText(client,"Please wait until round has started to check difficulty!");
+		}
 	}
 	ShowGameText(msg);
 }
@@ -1613,7 +1647,6 @@ stock bool:IsValidClient(client)
 	return true;
 }
 
-
 public Action:CheckItems(Handle:hTimer, any:client)
 {
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
@@ -1638,65 +1671,117 @@ public Action:CheckItems(Handle:hTimer, any:client)
 
 // Events
 
+public Action:OnSetupTime(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	// Events During Setup Time
+	if (FF2_IsFF2Enabled())
+	{
+		dBoss=GetClientOfUserId(FF2_GetBossUserId());
+		if (dBoss>0)
+		{
+			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
+			{	
+				CreateTimer(0.5,GetSetup,dBoss);
+			}
+			else
+				return Plugin_Handled;
+		}
+		return Plugin_Continue;
+	}
+	return Plugin_Continue;
+}
+
+public Action:GetSetup(Handle:hTimer, any:userid)
+{
+	new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
+	blitzisboss = true;
+	barrage = false;
+	customweapons=FF2_GetAbilityArgument(Boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+	EmitSoundToAll(BLITZROUNDSTART);
+}
+
+public Action:OnAnnounce(Handle:event, const String:name[], bool:dontBroadcast) // Thanks pheadxdll
+{
+	if(blitzisboss==true)
+	{
+		new String:strAudio[40];
+		GetEventString(event, "sound", strAudio, sizeof(strAudio));
+		if(strncmp(strAudio, "Game.Your", 9) == 0 || strcmp(strAudio, "Game.Stalemate") == 0)
+		{
+			EmitSoundToAll(BLITZROUNDEND);
+			// Block sound from being played
+			return Plugin_Handled;
+		}
+		return Plugin_Continue;
+	}
+	return Plugin_Continue;
+}
+
 public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	// Here, we have a config for blitzkrieg's rounds //
 	if (FF2_IsFF2Enabled())
 	{
-		danmakuboss = GetClientOfUserId(FF2_GetBossUserId(GetEventInt(event, "userid")));
-		if (danmakuboss>GetEventInt(event, "userid"))
+		dBoss = GetClientOfUserId(FF2_GetBossUserId());
+		switch(FF2_GetBossUserId())
 		{
-			if (FF2_HasAbility(GetEventInt(event, "userid"), this_plugin_name, "blitzkrieg_config"))
+			case 0:
+				CPrintToChatAll("[FF2] index = 0");
+			case 1:
+				CPrintToChatAll("[FF2] index = 1");
+			case 2:
+				CPrintToChatAll("[FF2] index = 2");
+			case 3:
+				CPrintToChatAll("[FF2] index = 3");
+			case 4:
+				CPrintToChatAll("[FF2] index = 4");
+			case 5:
+				CPrintToChatAll("[FF2] index = 5");
+			case 6:
+				CPrintToChatAll("[FF2] index = 6");
+			case 7:
+				CPrintToChatAll("[FF2] index = 7");
+			case 8:
+				CPrintToChatAll("[FF2] index = 8");
+			case 9:
+				CPrintToChatAll("[FF2] index = 9");
+		}
+		if(dBoss>0)
+		{
+			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
 			{	
-				blitzisboss = true;
-				barrage = false;
-				weapondifficulty=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 1, 2);
-				combatstyle=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 2);
-				customweapons=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
-				voicelines=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
-				miniblitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
-				blitzkriegrage=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
-				startmode=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
-				allowrevive=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
-				decaytime=FF2_GetAbilityArgument(GetEventInt(event, "userid"),this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
+				if(blitzisboss==false)
+					blitzisboss = true;
+				if(barrage==true)
+					barrage = false;
+				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
+				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
+				if(customweapons==0) // Just to double check
+					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons (failsafe)
+				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
+				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
+				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
 				if(weapondifficulty==0)
-					switch (GetRandomInt(0,8))
-					{
-						case 0:
-							weapondifficulty=1;
-						case 1:
-							weapondifficulty=2;
-						case 2:
-							weapondifficulty=3;
-						case 3:
-							weapondifficulty=4;
-						case 4:
-							weapondifficulty=5;
-						case 5:
-							weapondifficulty=6;
-						case 6:
-							weapondifficulty=7;
-						case 7:
-							weapondifficulty=8;
-						case 8:
-							weapondifficulty=9;
-					}
+					weapondifficulty=GetRandomInt(1,9);
 				switch(combatstyle)
 				{
 					case 1:
 					{
-						PrintHintText(danmakuboss, "You must rely on your rockets to finish enemies off!");
-						PlotTwist(danmakuboss);
+						PrintHintText(dBoss, "You must rely on your rockets to finish enemies off!");
+						PlotTwist(dBoss);
 					}
 					case 0:
 					{
-						PrintHintText(danmakuboss, "Use your melee weapon to finish off nearby enemies!");
-						PlotTwist(danmakuboss);
+						PrintHintText(dBoss, "Use your melee weapon to finish off nearby enemies!");
+						PlotTwist(dBoss);
 					}
 				}
 				if(customweapons!=0)
 					CreateTimer(0.1, PostSetup);
-				DisplayCurrentDifficulty(danmakuboss);
+				DisplayCurrentDifficulty(dBoss);
 			}
 		}
 	}
@@ -1715,12 +1800,10 @@ public PreDeath(Handle:event, const String:name[], bool:dontBroadcast)
 			if(StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
 			{
 				SetEventString(event, "weapon", "firedeath");
-				SetEventString(event, "weapon_logclassname", "firedeath");
 			}
 			else if(StrEqual(weapon, "ubersaw", false)||StrEqual(weapon, "market_gardener", false))
 			{
 				SetEventString(event, "weapon", "saw_kill");
-				SetEventString(event, "weapon_logclassname", "saw_kill");
 			}
 		}
 	}
@@ -1769,9 +1852,9 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 		CloseHandle(crockethell);
 		crockethell = INVALID_HANDLE;
 	}
+	weapondifficulty=0;
 	barrage=false;
-	blitzisboss = false;
-	return Plugin_Continue;
+	blitzisboss=false;
 }
 
 public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
