@@ -81,6 +81,9 @@ new dBoss;
 new blitzkriegrage;
 new miniblitzkriegrage;
 new startmode;
+new minlvl;
+new maxlvl;
+new lvlup;
 
 new bool:barrage = false;
 new bool:blitzisboss = false;
@@ -89,10 +92,9 @@ new bool:blitzisboss = false;
 
 new allowrevive;
 new decaytime;
+new reviveMarker;
 new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
-new reviveCount[MAXPLAYERS+1] = { 0, ... };
 new currentTeam[MAXPLAYERS+1] = {0, ... };
-new respawnMarkers[MAXPLAYERS+1] = { INVALID_ENT_REFERENCE, ... };
 new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
 // Version Number
@@ -187,7 +189,6 @@ public OnPluginStart2()
 			ChangeClass[i] = false;
 			GetClientAuthString(i, steamid, sizeof(steamid));
 		}
-		reviveCount[i] = 0;
 	}
 	#if defined _updater_included
 	if (LibraryExists("updater"))
@@ -231,6 +232,11 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			TF2_AddCondition(Boss,TFCond_Ubercharged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Ubercharge
 			CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0),RemoveUber,index);
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
+			if(lvlup!=0)
+			{
+				weapondifficulty=GetRandomInt(minlvl,maxlvl);
+				DisplayCurrentDifficulty(Boss);
+			}
 			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			//Switching Blitzkrieg's player class while retaining the same model to switch the voice responses/commands
 			PlotTwist(Boss);
@@ -260,7 +266,6 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 		{	
 			new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Kritzkrieg
-			PrintToServer("*mini_blitzkrieg*");
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
 			//RAGE Voice lines depending on Blitzkrieg's current player class (Blitzkrieg is two classes in 1 - Medic / Soldier soul in the same body)
 			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
@@ -327,7 +332,6 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 
 ClassResponses(client)
 {
-	PrintToServer("ClassResponses(client)");
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 	{
 		if(TF2_GetPlayerClass(client)==TFClass_Scout)
@@ -1280,94 +1284,61 @@ Teleport_Me(client)
 
 // ESSENTIAL CODE TO GET THE REANIMATOR WORKING
 
-public bool:DropReanimator(client) 
+stock DropReanimator(client) 
 {
 	PrintToServer("DropReanimator(client)");
 	// spawn the Revive Marker
 	new clientTeam = GetClientTeam(client);
-	new reviveMarker = CreateEntityByName("entity_revive_marker");
+	reviveMarker = CreateEntityByName("entity_revive_marker");
 	if (reviveMarker != -1)
 	{
 		SetEntPropEnt(reviveMarker, Prop_Send, "m_hOwner", client); // client index 
 		SetEntProp(reviveMarker, Prop_Send, "m_nSolidType", 2); 
 		SetEntProp(reviveMarker, Prop_Send, "m_usSolidFlags", 8); 
-		SetEntProp(reviveMarker, Prop_Send, "m_fEffects", 16); 
+		SetEntProp(reviveMarker, Prop_Send, "m_fEffects", 16); 	
 		SetEntProp(reviveMarker, Prop_Send, "m_iTeamNum", clientTeam); // client team 
 		SetEntProp(reviveMarker, Prop_Send, "m_CollisionGroup", 1); 
-		SetEntProp(reviveMarker, Prop_Send, "m_bSimulatedEveryTick", 1);
-		SetEntDataEnt2(client, FindSendPropInfo("CTFPlayer", "m_nForcedSkin")+4, reviveMarker);
-		SetEntProp(reviveMarker, Prop_Send, "m_nBody", _:TF2_GetPlayerClass(client) - 1); // character hologram that is shown
+		SetEntProp(reviveMarker, Prop_Send, "m_bSimulatedEveryTick", 1); 
+		SetEntProp(reviveMarker, Prop_Send, "m_nBody", _:TF2_GetPlayerClass(client) - 1); 
 		SetEntProp(reviveMarker, Prop_Send, "m_nSequence", 1); 
-		SetEntPropFloat(reviveMarker, Prop_Send, "m_flPlaybackRate", 1.0);
+		SetEntPropFloat(reviveMarker, Prop_Send, "m_flPlaybackRate", 1.0);  
 		SetEntProp(reviveMarker, Prop_Data, "m_iInitialTeamNum", clientTeam);
-		// call Forward
-		new Action:result = Plugin_Continue;
-		Call_PushCell(client);
-		Call_PushCell(reviveMarker);
-		Call_Finish(result);
-		
-		if (result == Plugin_Handled) {
-			return false;
-		} else if (result == Plugin_Stop) {
-			AcceptEntityInput(reviveMarker, "Kill");
-			return false;
-		}
+		SetEntDataEnt2(client, FindSendPropInfo("CTFPlayer", "m_nForcedSkin")+4, reviveMarker);
+		if(GetClientTeam(client) == 3)
+			SetEntityRenderColor(reviveMarker, 0, 0, 255); // make the BLU Revive Marker distinguishable from the red one
 		DispatchSpawn(reviveMarker);
-		respawnMarkers[client] = EntIndexToEntRef(reviveMarker);
+		CreateTimer(0.1, MoveMarker, GetClientUserId(client));
 		if(decayTimers[client] == INVALID_HANDLE) 
 		{
 			decayTimers[client] = CreateTimer(float(decaytime), TimeBeforeRemoval, GetClientUserId(client));
 		}
-		CreateTimer(0.1, TransmitMarker, GetClientUserId(client));
-		return true;
 	} 
-	else 
-	{
-		return false;
-	}
 }
 
-public bool:RemoveReanimator(client)
-	{
-	// call Forward
-	new Action:result = Plugin_Continue;
-	Call_PushCell(client);
-	Call_PushCell(respawnMarkers[client]);
-	Call_Finish(result);
-	
-	if (result == Plugin_Handled || result == Plugin_Stop) {
-		return false;
-	}
-	
-	if(!IsClientInGame(client)) {
-		return false;
-	}
-	
+public Action:MoveMarker(Handle:timer, any:userid) 
+{
+	new client = GetClientOfUserId(userid);
+	new Float:position[3];
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
+	TeleportEntity(reviveMarker, position, NULL_VECTOR, NULL_VECTOR);
+}
+
+stock RemoveReanimator(client)
+{
 	// set team and class change variable
 	currentTeam[client] = GetClientTeam(client);
 	ChangeClass[client] = false;
-	
-	
 	// kill Revive Marker if it exists
-	if (IsValidMarker(respawnMarkers[client])) {
-		if(GetEntProp(respawnMarkers[client],Prop_Send,"m_iHealth") >= GetEntProp(respawnMarkers[client],Prop_Send,"m_iMaxHealth")) {
-			reviveCount[client]++;
-		}
-		AcceptEntityInput(respawnMarkers[client], "Kill");
-		respawnMarkers[client] = INVALID_ENT_REFERENCE;
-	} 
-	else 
+	if (IsValidMarker(reviveMarker)) 
 	{
-		return false;
-	}
-	
+		AcceptEntityInput(reviveMarker, "Kill");
+	} 
 	// kill Decay Timer when it exists
 	if (decayTimers[client] != INVALID_HANDLE) 
 	{
 		KillTimer(decayTimers[client]);
 		decayTimers[client] = INVALID_HANDLE;
 	}
-	return true;
 }
 
 public bool:IsValidMarker(marker) 
@@ -1390,6 +1361,7 @@ public Action:OnPlayerRevive(Handle:event, const String:name[], bool:dontbroadca
 	if(blitzisboss==true)
 	{
 		RemoveReanimator(client);
+		CreateTimer(0.1, CheckItems, client);
 	}
 	else
 		return Plugin_Stop;
@@ -1421,51 +1393,27 @@ public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcas
 	return Plugin_Continue;
 }
 
-public Action:TransmitMarker(Handle:timer, any:userid) {
+public Action:TimeBeforeRemoval(Handle:timer, any:userid) 
+{
 	new client = GetClientOfUserId(userid);
-	if(!IsValidMarker(respawnMarkers[client]) || !IsClientInGame(client)) {
-		return;
-	}
-	// get position to teleport the Marker to
-	new Float:position[3];
-	GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
-	TeleportEntity(respawnMarkers[client], position, NULL_VECTOR, NULL_VECTOR);
-}
-
-public Action:TimeBeforeRemoval(Handle:timer, any:userid) {
-	
-	new client = GetClientOfUserId(userid);
-	
-	if(!IsValidMarker(respawnMarkers[client]) || !IsClientInGame(client)) {
-		return;
-	}
-	
-	// call Forward
-	new Action:result = Plugin_Continue;
-	Call_PushCell(client);
-	Call_PushCell(respawnMarkers[client]);
-	Call_Finish(result);
-	
-	if (result == Plugin_Handled || result == Plugin_Stop) {
-		return;
-	}
-	
+	if(!IsValidMarker(reviveMarker) || !IsClientInGame(client)) 
+		return Plugin_Handled;
 	RemoveReanimator(client);
-	if(decayTimers[client] != INVALID_HANDLE) {
+	if(decayTimers[client] != INVALID_HANDLE)
+	{
 		KillTimer(decayTimers[client]);
 		decayTimers[client] = INVALID_HANDLE;
 	}
+	return Plugin_Continue;
 }
 
 public OnClientDisconnect(client) 
 {
 	// remove the marker
 	RemoveReanimator(client);
-	
 	// reset storage array values
 	currentTeam[client] = 0;
 	ChangeClass[client] = false;
-	reviveCount[client] = 0;
  }
 
 // Notification System:
@@ -1723,29 +1671,6 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	if (FF2_IsFF2Enabled())
 	{
 		dBoss = GetClientOfUserId(FF2_GetBossUserId());
-		switch(FF2_GetBossUserId())
-		{
-			case 0:
-				CPrintToChatAll("[FF2] index = 0");
-			case 1:
-				CPrintToChatAll("[FF2] index = 1");
-			case 2:
-				CPrintToChatAll("[FF2] index = 2");
-			case 3:
-				CPrintToChatAll("[FF2] index = 3");
-			case 4:
-				CPrintToChatAll("[FF2] index = 4");
-			case 5:
-				CPrintToChatAll("[FF2] index = 5");
-			case 6:
-				CPrintToChatAll("[FF2] index = 6");
-			case 7:
-				CPrintToChatAll("[FF2] index = 7");
-			case 8:
-				CPrintToChatAll("[FF2] index = 8");
-			case 9:
-				CPrintToChatAll("[FF2] index = 9");
-		}
 		if(dBoss>0)
 		{
 			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
@@ -1764,8 +1689,11 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
 				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
 				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
+				minlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 10, 1); // Minimum level to roll on random mode
+				maxlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 11, 5); // Max level to roll on random mode
+				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
 				if(weapondifficulty==0)
-					weapondifficulty=GetRandomInt(1,9);
+					weapondifficulty=GetRandomInt(minlvl,maxlvl);
 				switch(combatstyle)
 				{
 					case 1:
@@ -1847,12 +1775,15 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 
 public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	CreateTimer(0.2, TimeBeforeRemoval, client);
 	if (crockethell!=INVALID_HANDLE)
 	{
 		CloseHandle(crockethell);
 		crockethell = INVALID_HANDLE;
 	}
 	weapondifficulty=0;
+	allowrevive=0;
 	barrage=false;
 	blitzisboss=false;
 }
