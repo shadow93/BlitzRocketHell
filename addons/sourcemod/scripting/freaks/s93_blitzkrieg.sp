@@ -172,7 +172,6 @@ public OnPluginStart2()
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_death", PreDeath, EventHookMode_Pre);
 	HookEvent("player_spawn", OnPlayerRevive, EventHookMode_Pre);
-	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_PostNoCopy);
 	HookEvent("player_changeclass", OnChangeClass);
 	RegConsoleCmd("ff2_hp", CheckLevel);
 	RegConsoleCmd("ff2hp", CheckLevel);
@@ -1406,18 +1405,6 @@ public Action:OnPlayerRevive(Handle:event, const String:name[], bool:dontbroadca
 	return Plugin_Continue;
 }
 
-public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
-{
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(blitzisboss==true)
-	{
-		CreateTimer(0.1, CheckItems, client);
-	}
-	else
-		return Plugin_Stop;
-	return Plugin_Continue;
-}
-
 public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcast) 
 {
 	if(blitzisboss==true)
@@ -1681,10 +1668,13 @@ public Action:OnSetupTime(Handle:event, const String:name[], bool:dontBroadcast)
 public Action:GetSetup(Handle:hTimer, any:userid)
 {
 	new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
-	blitzisboss = true;
-	barrage = false;
-	customweapons=FF2_GetAbilityArgument(Boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
-	EmitSoundToAll(BLITZROUNDSTART);
+	if (FF2_HasAbility(Boss, this_plugin_name, "blitzkrieg_config"))
+	{
+		blitzisboss = true;
+		barrage = false;
+		customweapons=FF2_GetAbilityArgument(userid,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+		EmitSoundToAll(BLITZROUNDSTART);
+	}
 }
 
 public Action:OnAnnounce(Handle:event, const String:name[], bool:dontBroadcast)
