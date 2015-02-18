@@ -1,0 +1,44 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"2.1 Beta (Stable)"
+			"Previous"	"2.0 Beta (Stable)"
+		}
+		"Notes"	"Fixed revive markers not decaying properly"
+		"Notes"	"Blitzkrieg can now either reroll or directly level up"
+		"Notes"	"Added a help panel for changes for specific classes"
+		"Notes"	"Moved most texts to translations file"
+		"Notes"	"Fixed SM errors regarding revive markers"
+		"Notes"	"Added level 420, 1337 and 9001"
+		"Notes" "Scouts & Spies now get critical hits on all weapons"
+		"Notes" "Can specify whether Blitzkrieg gains RAGE-on-kill"
+	}
+
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/freaks/s93_blitzkrieg.ff2"
+		"Plugin"	"Path_SM/translations/ff2_blitzkrieg.phrases.txt"
+		"Source"	"Path_SM/scripting/freaks/s93_blitzkrieg.sp"
+		"Plugin"	"Path_SM/configs/freak_fortress_2/danmedic.cfg"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start1.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start2.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start3.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start4.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start5.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_start6.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_victory1.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_victory2.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_victory3.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/ecstasyofgold.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_lastman1.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_lastman2.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_lastman3.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/dm_lastman4.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/eog_intro.mp3"
+		"Plugin"	"Path_Mod/sound/freak_fortress_2/s93dm/eog_outtro.mp3"
+
+	}
+}
