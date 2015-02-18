@@ -2224,8 +2224,9 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 		if(FF2_HasAbility(bossAttacker, this_plugin_name, "blitzkrieg_config"))
 		{
 			new Float:rageonkill = FF2_GetAbilityArgumentFloat(bossAttacker,this_plugin_name,"blitzkrieg_config",13,0.0);
+			new Float:bRage = FF2_GetBossCharge(bossAttacker,0);
 			if(rageonkill)
-				FF2_SetBossCharge(bossAttacker, 0, rageonkill);
+				FF2_SetBossCharge(bossAttacker, 0, bRage+rageonkill);
 			if(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")==GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
 			{
 				if(combatstyle)
@@ -2296,7 +2297,9 @@ public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
 	if(FF2_HasAbility(userid, this_plugin_name, "blitzkrieg_config"))
 	{
 		new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
-		FF2_SetBossCharge(Boss, 0, 25.0);
+		new Float:bRage = FF2_GetBossCharge(Boss,0);
+		if(bRage<100)
+			FF2_SetBossCharge(Boss, 0, bRage+25.0);
 		Teleport_Me(Boss);
 		TF2_StunPlayer(Boss, 4.0, 0.0, TF_STUNFLAGS_LOSERSTATE, Boss);
 	}
