@@ -107,7 +107,7 @@
 #define SOLDIERRAGEB	"vo/taunts/soldier_taunts05.wav"
 #define SOLDIERRAGEC	"vo/taunts/soldier_taunts21.wav"
 
-#define OVER_9000	"sound/saxton_hale/9000.wav"
+#define OVER_9000	"saxton_hale/9000.wav"
 
 #define SCOUT_R1 "vo/Scout_sf13_magic_reac03.wav"
 #define SCOUT_R2 "vo/Scout_sf13_magic_reac07.wav"
