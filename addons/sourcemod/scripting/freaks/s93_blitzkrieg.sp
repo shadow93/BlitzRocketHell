@@ -2223,11 +2223,11 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	{
 		if(FF2_HasAbility(bossAttacker, this_plugin_name, "blitzkrieg_config"))
 		{
+			new Float:rageonkill = FF2_GetAbilityArgumentFloat(bossAttacker,this_plugin_name,"blitzkrieg_config",13,0.0);
+			if(rageonkill)
+				FF2_SetBossCharge(bossAttacker, 0, rageonkill);
 			if(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")==GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
 			{
-				new Float:rageonkill = FF2_GetAbilityArgumentFloat(bossAttacker,this_plugin_name,"blitzkrieg_config",13,0.0);
-				if(rageonkill)
-					FF2_SetBossCharge(attacker, 0, rageonkill);
 				if(combatstyle)
 				{	
 					TF2_RemoveWeaponSlot(attacker, TFWeaponSlot_Primary);
