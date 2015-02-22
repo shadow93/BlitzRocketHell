@@ -1,14 +1,78 @@
-// The Blitzkrieg's abilities pack:
-// blitzkrieg_config - Configuration for his rounds.
-// blitzkrieg_barrage - Become ubercharged, crit boosted, change rocket launchers.
-// mini_blitzkrieg - Identical to rage_blitzkrieg, but without ubercharge.
-//
-// Special thanks to Wolvan for the necessary code for the revive markers.
-// (code ported to avoid the need to depend on another plugin for this)
-// https://forums.alliedmods.net/showthread.php?t=244208
-//
-// Special thanks to BBG_Theory, M76030, Ravensbro, and VoiDED for pointing out bugs
-//
+/* 
+
+	SHADoW93's Project TF2Danmaku Presents:
+	
+	The Blitzkrieg - The original Rocket Hell FF2 Boss
+	
+	Some code snippets from EP, MasterOfTheXP, pheadxdll, & Wolvan
+	Special thanks to BBG_Theory, M76030, Ravensbro, Transit of Venus, and VoiDED for pointing out bugs
+	
+	How to configure his rounds:
+	
+		blitzkrieg_config
+			arg1 - Difficulty Level
+				0 - Always Random
+				1 - Easy
+				2 - Normal
+				3 - Intermediate
+				4 - Difficult
+				5 - Lunatic
+				6 - Insane
+				7 - Godlike
+				8 - Rocket Hell
+				9 - Total Blitzkrieg
+				420 - MLG Pro: Level W33D
+				1337 - MLG Pro: Level L33T
+				9001 - ITS OVER 9000!
+				
+			arg2 - Combat Style
+				1 - Rocket Launcher Only
+				0 - Rocket Launcher + Melee
+				
+			arg3 - Use Custom Weaponset?
+				1 - Enable
+				0 - Disable
+				
+			arg4 - Ability Activation notification
+				1 - Voice Lines
+				0 - Generic Sound
+				
+			arg5 - Ammo on RAGE (default 180)
+			
+			arg6 - Ammo on life loss (default 360)
+			
+			arg7 - Round Start Mode (if arg2 = 0)
+				1 - Start with rocket launcher equipped
+				0 - Start with only Melee
+				
+			arg8 - Allow Medics to revive players
+				1 - Enable revive markers
+				0 - Disable revive markers
+				
+			arg9 - Revive Marker Duration (default 30 seconds)
+			
+				arg10-arg11 only if arg1 is set to 0
+			arg10 - What is the minimum level to select? (Default 2)
+			arg11 - What is the maximum level to select? (Default 5)
+			
+			arg12 - Reroll a different difficulty level? (1 & 0 only function if on random mode, 2 will work independent of this setting)
+				2 - Level Up
+				1 - Reroll
+				0 - Retain same level
+				
+			arg13 - RAGE on Kill? (default is no RAGE on kill)
+		
+		mini_blitzkrieg
+			arg0 - Ability Slot
+			arg1 - Kritzkrieg Duration
+			
+		blitzkrieg_barrage
+			arg0 - Ability Slot
+			arg1 - Ubercharge duration
+			arg2 - Kritzkrieg Duration
+			arg3 - Rampage duration (if arg1 = 1, will switch to normal rocket launchers)
+			
+*/
 
 #pragma semicolon 1
 
@@ -19,11 +83,11 @@
 #include <tf2_stocks>
 #include <freak_fortress_2>
 #include <freak_fortress_2_subplugin>
+#include <morecolors>
 #define MB 3
 #define ME 2048
 #undef REQUIRE_PLUGIN
 #tryinclude <updater>
-
 
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
@@ -42,6 +106,8 @@
 #define SOLDIERRAGEA	"vo/taunts/soldier_taunts16.wav"
 #define SOLDIERRAGEB	"vo/taunts/soldier_taunts05.wav"
 #define SOLDIERRAGEC	"vo/taunts/soldier_taunts21.wav"
+
+#define OVER_9000	"saxton_hale/9000.wav"
 
 #define SCOUT_R1 "vo/Scout_sf13_magic_reac03.wav"
 #define SCOUT_R2 "vo/Scout_sf13_magic_reac07.wav"
@@ -70,6 +136,45 @@
 #define BLITZROUNDSTART "freak_fortress_2/s93dm/eog_intro.mp3"
 #define BLITZROUNDEND	"freak_fortress_2/s93dm/eog_outtro.mp3"
 
+// Manning up
+static const String:BlitzCanLvlUp[][] = {
+	"vo/mvm_mann_up_mode01.wav",
+	"vo/mvm_mann_up_mode02.wav",
+	"vo/mvm_mann_up_mode03.wav",
+	"vo/mvm_mann_up_mode04.wav",
+	"vo/mvm_mann_up_mode05.wav",
+	"vo/mvm_mann_up_mode06.wav",
+	"vo/mvm_mann_up_mode07.wav",
+	"vo/mvm_mann_up_mode08.wav",
+	"vo/mvm_mann_up_mode09.wav",
+	"vo/mvm_mann_up_mode10.wav",
+	"vo/mvm_mann_up_mode11.wav",
+	"vo/mvm_mann_up_mode12.wav",
+	"vo/mvm_mann_up_mode13.wav",
+	"vo/mvm_mann_up_mode14.wav",
+	"vo/mvm_mann_up_mode15.wav"
+};
+
+static const String:BlitzIsDefeated[][] = {
+	"vo/mvm_manned_up01.wav",
+	"vo/mvm_manned_up02.wav",
+	"vo/mvm_manned_up03.wav"
+};
+
+static const String:BlitzIsVictorious[][] = {
+	"vo/mvm_game_over_loss01.wav",
+	"vo/mvm_game_over_loss02.wav",
+	"vo/mvm_game_over_loss03.wav",
+	"vo/mvm_game_over_loss04.wav",
+	"vo/mvm_game_over_loss05.wav",
+	"vo/mvm_game_over_loss06.wav",
+	"vo/mvm_game_over_loss07.wav",
+	"vo/mvm_game_over_loss08.wav",
+	"vo/mvm_game_over_loss09.wav",
+	"vo/mvm_game_over_loss10.wav",
+	"vo/mvm_game_over_loss11.wav"
+};
+
 //Handles
 new Handle: crockethell;
 //Other Stuff
@@ -84,29 +189,29 @@ new startmode;
 new minlvl;
 new maxlvl;
 new lvlup;
-
+new bool:bRdm = false;
 new bool:barrage = false;
 new bool:blitzisboss = false;
+new bool:BlitzIsWinner = false;
 
 // Reanimators
 
 new allowrevive;
 new decaytime;
-new reviveMarker;
+new reviveMarker[MAXPLAYERS+1];
 new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
 new currentTeam[MAXPLAYERS+1] = {0, ... };
 new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
 // Version Number
 #define MAJOR_REVISION "2"
-#define MINOR_REVISION "0"
+#define MINOR_REVISION "2"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Experimental)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
 
 #if defined _updater_included
 #define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
-#define DEBUG   // This will enable verbose logging. Useful for developers testing their updates. 
 #endif
 
 public OnMapStart()
@@ -114,6 +219,7 @@ public OnMapStart()
 	// ROUND EVENTS
 	PrecacheSound(BLITZROUNDSTART,true);
 	PrecacheSound(BLITZROUNDEND, true);
+	PrecacheSound(OVER_9000, true);
 	// RAGE GENERIC ALERTS
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
@@ -155,31 +261,49 @@ public OnMapStart()
 	PrecacheSound(SPY_R4,true);
 	PrecacheSound(SPY_R5,true);
 	PrecacheSound(SPY_R6,true);
+	LoadTranslations("ff2_blitzkrieg.phrases");
+	for (new i = 0; i < sizeof(BlitzCanLvlUp); i++)
+	{
+		PrecacheSound(BlitzCanLvlUp[i], true);
+	}
+	for (new i = 0; i < sizeof(BlitzIsDefeated); i++)
+	{
+		PrecacheSound(BlitzIsDefeated[i], true);
+	}
+	for (new i = 0; i < sizeof(BlitzIsVictorious); i++)
+	{
+		PrecacheSound(BlitzIsVictorious[i], true);
+	}
 }
 
 
 public Plugin:myinfo = {
 	name = "Freak Fortress 2: The Blitzkrieg",
 	author = "SHADoW NiNE TR3S",
-	description="TF2 Danmaku BETA",
+	description="Projectile Hell (TF2Danmaku) BETA",
 	version=PLUGIN_VERSION,
 };
 
 public OnPluginStart2()
 {
-	HookEvent("teamplay_round_start", OnSetupTime, EventHookMode_PostNoCopy);
 	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("teamplay_broadcast_audio", OnAnnounce, EventHookMode_Pre);
+	HookEvent("post_inventory_application", OnPlayerInventory, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
 	HookEvent("player_death", PreDeath, EventHookMode_Pre);
-	HookEvent("player_spawn", OnPlayerRevive, EventHookMode_Pre);
-	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_PostNoCopy);
+	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_Pre);
 	HookEvent("player_changeclass", OnChangeClass);
 	RegConsoleCmd("ff2_hp", CheckLevel);
 	RegConsoleCmd("ff2hp", CheckLevel);
 	RegConsoleCmd("hale_hp", CheckLevel);
 	RegConsoleCmd("halehp", CheckLevel);
+	RegConsoleCmd("ff2_classinfo", BlitzHelp);
+	RegConsoleCmd("ff2classinfo", BlitzHelp);
+	RegConsoleCmd("hale_classinfo", BlitzHelp);
+	RegConsoleCmd("haleclassinfo",	BlitzHelp);
+	RegConsoleCmd("ff2help", BlitzHelp);
+	RegConsoleCmd("helpme",	BlitzHelp);
 	decl String:steamid[256];
 	for (new i = 1; i <= MaxClients; i++) 
 	{
@@ -218,7 +342,6 @@ public OnLibraryRemoved(const String:name[])
 	#endif
 }
 
-
 // Blitzkrieg's Rage & Death Effect //
 
 public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:ability_name[],action)
@@ -232,15 +355,42 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			TF2_AddCondition(Boss,TFCond_Ubercharged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Ubercharge
 			CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0),RemoveUber,index);
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
-			if(lvlup!=0)
+			if(lvlup)
 			{
-				weapondifficulty=GetRandomInt(minlvl,maxlvl);
-				DisplayCurrentDifficulty(Boss);
+				if(bRdm && lvlup==1)
+					weapondifficulty=GetRandomInt(minlvl,maxlvl);
+				else
+				{
+					switch(weapondifficulty)
+					{
+						case 9:
+							weapondifficulty=420;
+						case 420:
+							weapondifficulty=1337;
+						case 1337:
+							weapondifficulty=9001;
+						case 9001:
+						{
+							if(bRdm)
+								weapondifficulty=minlvl;
+							else
+								weapondifficulty=FF2_GetAbilityArgument(index,this_plugin_name,"blitzkrieg_config", 1, 2);
+						}
+						default:
+							weapondifficulty=weapondifficulty+1;
+					}
+				}
+				DisplayCurrentDifficulty(Boss);		
 			}
 			SetEntProp(Boss, Prop_Data, "m_takedamage", 0);
 			//Switching Blitzkrieg's player class while retaining the same model to switch the voice responses/commands
 			PlotTwist(Boss);
 			crockethell = CreateTimer(FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,3),ItzBlitzkriegTime,index);
+			if(!combatstyle) // 2x strength if using mixed melee/rocket launcher
+			{
+				new Float:rDuration=FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name, 3);
+				TF2_AddCondition(Boss, TFCond_RuneStrength, rDuration);
+			}
 			//For the Class Reaction Voice Lines
 			switch(voicelines)
 			{
@@ -255,10 +405,6 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 					EmitSoundToAll(BLITZKRIEG_SND);
 			}
 		}
-		else if (FF2_GetRoundState()==2)
-		{
-			return Plugin_Stop;
-		}
 	}
 	else if (!strcmp(ability_name,"mini_blitzkrieg")) 	// KRITZKRIEG & CROCKET HELL
 	{		
@@ -268,46 +414,44 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(index,this_plugin_name,ability_name,1,5.0)); // Kritzkrieg
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
 			//RAGE Voice lines depending on Blitzkrieg's current player class (Blitzkrieg is two classes in 1 - Medic / Soldier soul in the same body)
-			if(TF2_GetPlayerClass(Boss)==TFClass_Medic)
+			switch(TF2_GetPlayerClass(Boss))
 			{
-				switch (GetRandomInt(0,2))	
+				case TFClass_Medic: // Medic
 				{
-					case 0:
-						EmitSoundToAll(MEDICRAGEA, Boss);
-					case 1:
-						EmitSoundToAll(MEDICRAGEB, Boss);
-					case 2:
-						EmitSoundToAll(MEDICRAGEC, Boss);
+					switch (GetRandomInt(0,2))	
+					{
+						case 0:
+							EmitSoundToAll(MEDICRAGEA, Boss);
+						case 1:
+							EmitSoundToAll(MEDICRAGEB, Boss);
+						case 2:
+							EmitSoundToAll(MEDICRAGEC, Boss);
+					}
 				}
-			}
-			else if(TF2_GetPlayerClass(Boss)==TFClass_Soldier)
-			{
-				switch (GetRandomInt(0,2))	
+				case TFClass_Soldier: // Soldier
 				{
-					case 0:
-						EmitSoundToAll(SOLDIERRAGEA, Boss);
-					case 1:
-						EmitSoundToAll(SOLDIERRAGEB, Boss);
-					case 2:
-						EmitSoundToAll(SOLDIERRAGEC, Boss);
-				}				
+					switch (GetRandomInt(0,2))	
+					{
+						case 0:
+							EmitSoundToAll(SOLDIERRAGEA, Boss);
+						case 1:
+							EmitSoundToAll(SOLDIERRAGEB, Boss);
+						case 2:
+							EmitSoundToAll(SOLDIERRAGEC, Boss);
+					}				
+				}
 			}
 			// Weapon switch depending if Blitzkrieg Barrage is active or not
-			if(barrage==true)
-			{
+			if(barrage)
 				BlitzkriegBarrage(Boss);
-				SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
-			}
 			else
-			{
 				RandomDanmaku(Boss);
-				switch(combatstyle)
-				{
-					case 1:
-						SetAmmo(Boss, TFWeaponSlot_Primary,999999);
-					case 0:
-						SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
-				}
+			switch(combatstyle)
+			{
+				case 1:
+					SetAmmo(Boss, TFWeaponSlot_Primary,999999);
+				case 0:
+					SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
 			}
 			switch(voicelines)
 			{
@@ -322,10 +466,6 @@ public Action:FF2_OnAbility2(index,const String:plugin_name[],const String:abili
 					EmitSoundToAll(MINIBLITZKRIEG_SND);
 			}
 		}
-		else if (FF2_GetRoundState()==2)
-		{
-			return Plugin_Stop;
-		}
 	}
 	return Plugin_Continue;
 }
@@ -334,93 +474,90 @@ ClassResponses(client)
 {
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 	{
-		if(TF2_GetPlayerClass(client)==TFClass_Scout)
+		switch(TF2_GetPlayerClass(client))
 		{
-			switch (GetRandomInt(0,1))
+			case TFClass_Scout: // Scout
 			{
-				case 0:
-					EmitSoundToAll(SCOUT_R1,client);
-				case 1:
-					EmitSoundToAll(SCOUT_R2,client);
+				switch (GetRandomInt(0,1))
+				{
+					case 0:
+						EmitSoundToAll(SCOUT_R1,client);
+					case 1:
+						EmitSoundToAll(SCOUT_R2,client);
+				}
 			}
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
-		{
-			EmitSoundToAll(SOLLY_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Pyro)
-		{
-			EmitSoundToAll(PYRO_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_DemoMan)
-		{
-			EmitSoundToAll(DEMO_R1,client);
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Heavy)
-		{
-			switch (GetRandomInt(0,1))
+			case TFClass_Soldier: // Soldier
+				EmitSoundToAll(SOLLY_R1,client);
+			case TFClass_Pyro: // Pyro
+				EmitSoundToAll(PYRO_R1,client);
+			case TFClass_DemoMan: // DemoMan
+				EmitSoundToAll(DEMO_R1,client);
+			case TFClass_Heavy: // Heavy
 			{
-				case 0:
-					EmitSoundToAll(HEAVY_R1,client);
-				case 1:	
-					EmitSoundToAll(HEAVY_R2,client);
+				switch (GetRandomInt(0,1))
+				{
+					case 0:
+						EmitSoundToAll(HEAVY_R1,client);
+					case 1:	
+						EmitSoundToAll(HEAVY_R2,client);
+				}
 			}
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Engineer)
-		{
-			switch (GetRandomInt(0,1))
+			case TFClass_Engineer: // Engineer
 			{
-				case 0:
-					EmitSoundToAll(ENGY_R1,client);
-				case 1:
-					EmitSoundToAll(ENGY_R2,client);
+				switch (GetRandomInt(0,1))
+				{
+					case 0:
+						EmitSoundToAll(ENGY_R1,client);
+					case 1:
+						EmitSoundToAll(ENGY_R2,client);
+				}
+			}	
+			case TFClass_Medic: // Medic
+			{
+				switch (GetRandomInt(0,4))
+				{
+					case 0:
+						EmitSoundToAll(MEDIC_R1,client);
+					case 1:
+						EmitSoundToAll(MEDIC_R2,client);
+					case 2:
+						EmitSoundToAll(MEDIC_R3,client);
+					case 3:
+						EmitSoundToAll(MEDIC_R4,client);
+					case 4:
+						EmitSoundToAll(MEDIC_R5,client);
+				}
 			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Medic)
-		{
-			switch (GetRandomInt(0,4))
+			case TFClass_Sniper: // Sniper
 			{
-				case 0:
-					EmitSoundToAll(MEDIC_R1,client);
-				case 1:
-					EmitSoundToAll(MEDIC_R2,client);
-				case 2:
-					EmitSoundToAll(MEDIC_R3,client);
-				case 3:
-					EmitSoundToAll(MEDIC_R4,client);
-				case 4:
-					EmitSoundToAll(MEDIC_R5,client);
+				switch (GetRandomInt(0,2))
+				{
+					case 0:
+						EmitSoundToAll(SNIPER_R1,client);
+					case 1:
+						EmitSoundToAll(SNIPER_R2,client);
+					case 2:
+						EmitSoundToAll(SNIPER_R3,client);
+				}
 			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Sniper)
-		{
-			switch (GetRandomInt(0,2))
+			case TFClass_Spy: // Spy
 			{
-				case 0:
-					EmitSoundToAll(SNIPER_R1,client);
-				case 1:
-					EmitSoundToAll(SNIPER_R2,client);
-				case 2:
-					EmitSoundToAll(SNIPER_R3,client);
+				switch (GetRandomInt(0,4))
+				{
+					case 0:
+						EmitSoundToAll(SPY_R1,client);
+					case 1:
+						EmitSoundToAll(SPY_R2,client);
+					case 2:
+						EmitSoundToAll(SPY_R3,client);
+					case 3:
+						EmitSoundToAll(SPY_R4,client);
+					case 4:
+						EmitSoundToAll(SPY_R5,client);
+					case 5:
+						EmitSoundToAll(SPY_R6,client);
+				}
 			}
-		}	
-		else if(TF2_GetPlayerClass(client)==TFClass_Spy)
-		{
-			switch (GetRandomInt(0,4))
-			{
-				case 0:
-					EmitSoundToAll(SPY_R1,client);
-				case 1:
-					EmitSoundToAll(SPY_R2,client);
-				case 2:
-					EmitSoundToAll(SPY_R3,client);
-				case 3:
-					EmitSoundToAll(SPY_R4,client);
-				case 4:
-					EmitSoundToAll(SPY_R5,client);
-				case 5:
-					EmitSoundToAll(SPY_R6,client);
-			}						
 		}
 	}
 }
@@ -428,33 +565,36 @@ ClassResponses(client)
 // Switch Roles ability
 PlotTwist(client)
 {
-	if(barrage==true)
+	if(barrage)
 	{
-		if(TF2_GetPlayerClass(client)==TFClass_Medic)
+		switch(TF2_GetPlayerClass(client))
 		{
-			TF2_SetPlayerClass(client, TFClass_Soldier);
-			switch (GetRandomInt(0,2))	
+			case TFClass_Medic: // Medic
 			{
-				case 0:
-					EmitSoundToAll(SWITCHSOLA);
-				case 1:
-					EmitSoundToAll(SWITCHSOLB);
-				case 2:
-					EmitSoundToAll(SWITCHSOLC);
+				TF2_SetPlayerClass(client, TFClass_Soldier);
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(SWITCHSOLA);
+					case 1:
+						EmitSoundToAll(SWITCHSOLB);
+					case 2:
+						EmitSoundToAll(SWITCHSOLC);
+				}
 			}
-		}
-		else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
-		{
-			TF2_SetPlayerClass(client, TFClass_Medic);
-			switch (GetRandomInt(0,2))	
+			case TFClass_Soldier: // Soldier
 			{
-				case 0:
-					EmitSoundToAll(SWITCHMEDA);
-				case 1:
-					EmitSoundToAll(SWITCHMEDB);
-				case 2:
-					EmitSoundToAll(SWITCHMEDC);
-			}				
+				TF2_SetPlayerClass(client, TFClass_Medic);
+				switch (GetRandomInt(0,2))	
+				{
+					case 0:
+						EmitSoundToAll(SWITCHMEDA);
+					case 1:
+						EmitSoundToAll(SWITCHMEDB);
+					case 2:
+						EmitSoundToAll(SWITCHMEDC);
+				}				
+			}
 		}
 	}
 	else
@@ -475,33 +615,21 @@ PlotTwist(client)
 	// Removing all wearables
 	new entity, owner;
 	while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
-	{
 		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==FF2_GetBossTeam())
-		{
 			TF2_RemoveWearable(owner, entity);
-		}
-	}
 	while((entity=FindEntityByClassname(entity, "tf_wearable_demoshield"))!=-1)
-	{
 		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==FF2_GetBossTeam())
-		{
 			TF2_RemoveWearable(owner, entity);
-		}
-	}
 	while((entity=FindEntityByClassname(entity, "tf_powerup_bottle"))!=-1)
-	{
 		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==FF2_GetBossTeam())
-		{
 			TF2_RemoveWearable(owner, entity);
-		}
-	}
 	// Restoring Melee (if using hybrid style), otherwise, giving Blitzkrieg just the death effect rocket launchers.
 	// Also restores his B.A.S.E. Jumper
 	SpawnWeapon(client, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
-	if(barrage==true)
+	if(barrage)
 		BlitzkriegBarrage(client);
 	else
-		if(startmode==1)
+		if(startmode)
 			RandomDanmaku(client);
 	switch(combatstyle)
 	{
@@ -509,11 +637,38 @@ PlotTwist(client)
 			SetAmmo(client, TFWeaponSlot_Primary,999999);
 		case 0:
 		{
-			if(TF2_GetPlayerClass(client)==TFClass_Medic)
-				SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 3 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-			else if(TF2_GetPlayerClass(client)==TFClass_Soldier)
-				SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 3 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-			if(barrage==true)
+			switch(TF2_GetPlayerClass(client))
+			{
+				case 5: // Medic
+				{
+					switch(weapondifficulty)
+					{
+						case 420:
+							SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
+						case 1337:
+							SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 14.37 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+						case 9001:
+							SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 100 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 100 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+						default:
+							SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+					}
+				}
+				case 3: // Soldier
+				{
+					switch(weapondifficulty)
+					{
+						case 420:
+							SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 14.37 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
+						case 1337:
+							SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");
+						case 9001:
+							SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 100 ; 137 ; 100 ; 267 ; 1 ; 391 ; 100 ; 401 ; 100 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");
+						default:
+							SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+					}
+				}
+			}
+			if(barrage)
 				SetAmmo(client, TFWeaponSlot_Primary,blitzkriegrage);
 			else
 				SetAmmo(client, TFWeaponSlot_Primary,miniblitzkriegrage);
@@ -550,6 +705,13 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "411 ; 5 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.80 ; 4 ; 39 ; 6 ; 0.18 ; 97 ; 0.01 ; 103 ; 1.14"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.60 ; 4 ; 40 ; 6 ; 0.20 ; 97 ; 0.01 ; 411 ; 15"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
 			}
 		}
 		case 1: // Beggar's Bazooka
@@ -574,6 +736,13 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "411 ; 8 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.84 ; 4 ; 41 ; 6 ; 0.16 ; 97 ; 0.01 ; 103 ; 1.18"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.75 ; 4 ; 45 ; 6 ; 0.17 ; 97 ; 0.01 ; 103 ; 1.35 ; 411 ; 13"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+	
 			}
 		}
 		case 2: // The Original
@@ -598,6 +767,13 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "411 ; 11 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.76 ; 4 ; 32 ; 6 ; 0.14 ; 97 ; 0.01 ; 103 ; 1.12"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.70 ; 4 ; 50 ; 6 ; 0.14 ; 97 ; 0.01 ; 103 ; 1.30 ; 411 ; 11"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
 			}
 		}
 		case 3: // Festive Black Box
@@ -622,6 +798,13 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "411 ; 14 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.82 ; 4 ; 42 ; 6 ; 0.12 ; 97 ; 0.01 ; 103 ; 1.06"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.75 ; 4 ; 55 ; 6 ; 0.11 ; 97 ; 0.01 ; 103 ; 1.20 ; 411 ; 8"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
 			}
 		}
 		case 4: // Festive Rocket Launcher
@@ -646,6 +829,13 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "411 ; 17 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.88 ; 4 ; 47 ; 6 ; 0.10 ; 97 ; 0.01 ; 103 ; 1.05"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.80 ; 4 ; 60 ; 6 ; 0.08 ; 97 ; 0.01 ; 103 ; 1.05 ; 411 ; 5"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
 			}
 		}
 		case 5: // Air Strike
@@ -670,7 +860,14 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "411 ; 20 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.78 ; 4 ; 48 ; 6 ; 0.08 ; 97 ; 0.01"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.85 ; 4 ; 48 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.20 ; 411 ; 25"));
-			}
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
+				}
 		}
 		case 6: // Direct Hit
 		{
@@ -694,6 +891,12 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "411 ; 23 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.94 ; 4 ; 13 ; 6 ; 0.05 ; 97 ; 0.01"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.85 ; 4 ; 40 ; 6 ; 0.05 ; 97 ; 0.01 ; 103 ; 1.05 ; 411 ; 20"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
 			}
 		}
 		case 7: // Black Box
@@ -718,31 +921,45 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "411 ; 26 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.90 ; 4 ; 49 ; 6 ; 0.15 ; 97 ; 0.01 ; 103 ; 1.22"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.85 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 103 ; 1.25 ; 411 ; 30"));
-			}
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
+				}
 		}
 		case 8: // Rocket Launcher
 		{
 			switch(weapondifficulty)
 			{
 				case 1: // Easy
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 100, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 11 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.25"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 100, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1 ; 413 ; 1 ; 1 ; 0.06 ; 4 ; 11 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.25"));
 				case 2: // Normal
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 101, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6 ; 413 ; 1 ; 1 ; 0.13 ; 4 ; 22 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.60"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 101, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6 ; 413 ; 1 ; 1 ; 0.13 ; 4 ; 22 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.60"));
 				case 3: // Intermediate
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 102, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6 ; 413 ; 1 ; 1 ; 0.18 ; 4 ; 25 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.32"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 102, 5, "642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6 ; 413 ; 1 ; 1 ; 0.18 ; 4 ; 25 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.32"));
 				case 4: // Difficult
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 103, 5, "413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2003 ; 2014 ; 6 ; 138 ; 0.18 ; 4 ; 24 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.65"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 103, 5, "413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2003 ; 2014 ; 6 ; 138 ; 0.18 ; 4 ; 24 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.65"));
 				case 5: // Lunatic
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.23 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 104, 5, "413 ; 1 ; 72 ; 0.25 ; 208 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7 ; 138 ; 0.23 ; 4 ; 32 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
 				case 6: // Insane
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "411 ; 20 ; 72 ; 0.45 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3 ; 138 ; 0.46 ; 4 ; 34 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 105, 5, "411 ; 20 ; 72 ; 0.45 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3 ; 138 ; 0.46 ; 4 ; 34 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.20"));
 				case 7: // Godlike
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "411 ; 18 ; 72 ; 0.65 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5 ; 138 ; 0.66 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.50"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 106, 5, "411 ; 18 ; 72 ; 0.65 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5 ; 138 ; 0.66 ; 4 ; 42 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.50"));
 				case 8: // Rocket Hell
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "411 ; 29 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.86 ; 4 ; 44 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.80"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 107, 5, "411 ; 29 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.86 ; 4 ; 44 ; 6 ; 0.08 ; 97 ; 0.01 ; 104 ; 0.80"));
 				case 9: // Total Blitzkrieg
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.80 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 103 ; 1.24 ; 411 ; 35"));
-			}
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.80 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 103 ; 1.24 ; 411 ; 35"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+
+				}
 		}
 		case 9: // Gold Botkiller Rocket Launcher Mk.II
 		{
@@ -766,6 +983,12 @@ RandomDanmaku(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 107, 5, "411 ; 32 ; 72 ; 0.85 ; 208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4 ; 138 ; 0.80 ; 4 ; 45 ; 6 ; 0.20 ; 97 ; 0.01 ; 104 ; 0.80"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2 ; 138 ; 0.90 ; 4 ; 47 ; 6 ; 0.13 ; 97 ; 0.01 ; 103 ; 1.10 ; 411 ; 30"));	
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 420, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 4 ; 103 ; 5.20 ; 2 ; 5.20 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 973, 1337, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 14.37 ; 2 ; 14.37 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
+				case 9001: // ITS OVER 9000!
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 973, 9001, 5, "208 ; 1 ; 413 ; 1 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 5 ; 103 ; 100 ; 2 ; 100 ; 4 ; 40 ; 6 ; 0 ; 97 ; 0 ; 411 ; 15"));
 			}
 		}
 	}
@@ -798,7 +1021,11 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 107, 5, "208 ; 1 ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.02 ; 97 ; 0.01 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 108, 5, "208 ; 1 ; 2 ; 2.90 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 97 ; 0.00 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
-			}
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				}
 		}
 		case 1: // Beggar's Bazooka
 		{
@@ -822,6 +1049,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 107, 5, "208 ; 1 ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.65 ; 411 ; 13 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 108, 5, "208 ; 1 ; 2 ; 2.95 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.65 ; 411 ; 13 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 2: // The Original
@@ -846,7 +1080,14 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 107, 5, "208 ; 1 ; 2 ; 1.90 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.60 ; 411 ; 11 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 108, 5, "208 ; 1 ; 2 ; 2.90 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.60 ; 411 ; 11 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
-				}
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 513, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
+			}
 		}
 		case 3: // Festive Black Box
 		{
@@ -870,6 +1111,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 107, 5, "208 ; 1 ; 2 ; 1.95 ; 413 ; 1 ; 4 ; 60 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.50 ; 411 ; 8 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 108, 5, "208 ; 1 ; 2 ; 2.95 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.50 ; 411 ; 8 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 1085, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 4: // Festive Rocket Launcher
@@ -894,6 +1142,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 107, 5, "208 ; 1 ; 2 ; 2.10 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.40 ; 411 ; 5 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 108, 5, "208 ; 1 ; 2 ; 2.10 ; 413 ; 1 ; 4 ; 70 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.40 ; 411 ; 5 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 658, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 5: // Air Strike
@@ -918,6 +1173,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 107, 5, "208 ; 1 ; 2 ; 2.15 ; 413 ; 1 ; 4 ; 88 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.50 ; 411 ; 25 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 108, 5, "208 ; 1 ; 2 ; 3.15 ; 413 ; 1 ; 4 ; 98 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.50 ; 411 ; 25 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 6: // Direct Hit
@@ -942,6 +1204,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 107, 5, "208 ; 1 ; 2 ; 2.25 ; 413 ; 1 ; 4 ; 80 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.60 ; 411 ; 20 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 108, 5, "208 ; 1 ; 2 ; 3.25 ; 413 ; 1 ; 4 ; 90 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.60 ; 411 ; 20 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 7: // Black Box
@@ -966,6 +1235,13 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 107, 5, "208 ; 1 ; 2 ; 2.05 ; 413 ; 1 ; 4 ; 82 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.50 ; 411 ; 30 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 108, 5, "208 ; 1 ; 2 ; 3.05 ; 413 ; 1 ; 4 ; 92 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.50 ; 411 ; 30 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
 			}
 		}
 		case 8: // Rocket Launcher
@@ -973,24 +1249,31 @@ BlitzkriegBarrage(client)
 			switch(weapondifficulty)
 			{
 				case 1: // Easy
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 100, 5, "1 ; 0.10 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.03 ; 97 ; 0.01 ; 104 ; 0.50 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 100, 5, "1 ; 0.10 ; 413 ; 1 ; 4 ; 25 ; 6 ; 0.03 ; 97 ; 0.01 ; 104 ; 0.50 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 1"));
 				case 2: // Normal
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 101, 5, "1 ; 0.20 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 101, 5, "1 ; 0.20 ; 413 ; 1 ; 4 ; 40 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6"));
 				case 3: // Intermediate
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 102, 5, "1 ; 0.25 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 102, 5, "1 ; 0.25 ; 413 ; 1 ; 4 ; 45 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6"));
 				case 4: // Difficult
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 103, 5, "72 ; 0.25 ; 208 ; 1 ; 138 ; 0.30 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2003 ; 2014 ; 3"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 103, 5, "72 ; 0.25 ; 208 ; 1 ; 138 ; 0.30 ; 413 ; 1 ; 4 ; 55 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2003 ; 2014 ; 3"));
 				case 5: // Lunatic
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 104, 5, "72 ; 0.45 ; 208 ; 1 ; 138 ; 0.50 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 104, 5, "72 ; 0.45 ; 208 ; 1 ; 138 ; 0.50 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.03 ; 97 ; 0.01 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2008 ; 2014 ; 7"));
 				case 6: // Insane
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 105, 5, "72 ; 0.65 ; 208 ; 1 ; 138 ; 0.60 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.14 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 105, 5, "72 ; 0.65 ; 208 ; 1 ; 138 ; 0.60 ; 413 ; 1 ; 4 ; 65 ; 6 ; 0.06 ; 97 ; 0.01 ; 103 ; 1.14 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2006 ; 2014 ; 3"));
 				case 7: // Godlike
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 106, 5, "72 ; 0.85 ; 208 ; 1 ; 2 ; 1.10 ; 413 ; 1 ; 4 ; 75 ; 6 ; 0.04 ; 97 ; 0.01 ; 103 ; 1.24 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 106, 5, "72 ; 0.85 ; 208 ; 1 ; 2 ; 1.10 ; 413 ; 1 ; 4 ; 75 ; 6 ; 0.04 ; 97 ; 0.01 ; 103 ; 1.24 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2005 ; 2014 ; 5"));
 				case 8: // Rocket Hell
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 107, 5, "208 ; 1 ; 2 ; 2.20 ; 413 ; 1 ; 4 ; 85 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.48 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002; 2014 ; 4"));
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 107, 5, "208 ; 1 ; 2 ; 2.20 ; 413 ; 1 ; 4 ; 85 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.48 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
-					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 205, 108, 5, "208 ; 1 ; 2 ; 3.20 ; 413 ; 1 ; 4 ; 95 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.48 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
-			}
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 108, 5, "208 ; 1 ; 2 ; 3.20 ; 413 ; 1 ; 4 ; 95 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.48 ; 411 ; 35 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+
+				}
 		}
 		case 9: // Gold Botkiller Rocket Launcher Mk.II
 		{
@@ -1014,147 +1297,239 @@ BlitzkriegBarrage(client)
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 107, 5, "208 ; 1 ; 2 ; 2.30 ; 413 ; 1 ; 4 ; 87 ; 6 ; 0.02 ; 97 ; 0.01 ; 103 ; 1.70 ; 411 ; 30 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2002 ; 2014 ; 4"));
 				case 9: // Total Blitzkrieg
 					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 108, 5, "208 ; 1 ; 2 ; 3.30 ; 413 ; 1 ; 4 ; 97 ; 6 ; 0.00 ; 97 ; 0.00 ; 103 ; 2.70 ; 411 ; 30 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 420: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 420, 5, "208 ; 1 ; 2 ; 5.2 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 5.2 ; 73 ; 5.2 ; 97 ; 0.00 ; 103 ; 5.2 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 1337: // MLG PRO
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 1337, 5, "208 ; 1 ; 2 ; 14.37 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 14.37 ; 73 ; 14.37 ; 97 ; 0.00 ; 103 ; 14.37 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
+				case 9001: // ITS OVER 9000
+					SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", SpawnWeapon(client, "tf_weapon_rocketlauncher", 974, 9001, 5, "208 ; 1 ; 2 ; 100 ; 413 ; 1 ; 4 ; 50 ; 6 ; 0.00 ; 72 ; 100 ; 73 ; 100 ; 97 ; 0.00 ; 103 ; 100 ; 411 ; 15 ; 642 ; 1 ; 2025 ; 3 ; 2013 ; 2004 ; 2014 ; 2"));
 			}
 		}
 	}
 }
 
-// Custom Weaponset. I might redo this section as a while statement unless it messes up if i do it as while statements.
-PrimaryWeapons(client)
+// Custom Weaponset. I might eventually turn it into its own external config or something.
+CheckWeapons(client)
 {
 	new weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
 	new index=-1;
+	// Primary
 	if(weapon && IsValidEdict(weapon))
 	{
 		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
 		switch(index)
 		{
-			case 127: // Direct Hit
+			case 15, 41, 202, 298, 654, 793, 802, 850, 882, 891, 900, 909, 958, 967: // Miniguns
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 5, 10, "103 ; 2 ; 114 ; 1 ; 100 ; 0.30 ; 2 ; 1.50 ; 15 ; 1 ; 179 ; 1 ; 488 ; 3 ; 621 ; 0.35 ; 643 ; 0.75 ; 644 ; 10");
-				PrintToChat(client, "Direct Hit:");
-				PrintToChat(client, "+50% Damage bonus");
-				PrintToChat(client, "+100% Projectile speed");
-				PrintToChat(client, "Increased Attack speed while blast jumping");
-				PrintToChat(client, "Rocket Specialist");
-				PrintToChat(client, "Clip size increased as you deal damage");
-				PrintToChat(client, "When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
-				PrintToChat(client, "Wearer never takes fall damage");
-				PrintToChat(client, "Minicrits airborne targets");
-				PrintToChat(client, "Minicrits become crits");
-				PrintToChat(client, "-70% Explosion radius");
-				PrintToChat(client, "No Random Critical Hits");
-			}
-			case 441: //Cow Mangler
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_particle_cannon", 441, 5, 10, "2 ; 1.5 ; 58 ; 2 ; 281 ; 1 ; 282 ; 1 ; 288 ; 1 ; 366 ; 5");
-				PrintToChat(client, "Cow Mangler:");
-				PrintToChat(client, "+50% damage bonus");
-				PrintToChat(client, "+100% Self Damage Push Force");
-				PrintToChat(client, "No Ammo needed");
-				PrintToChat(client, "A successful hit mid-air stuns Blitzkrieg for 5 seconds");
-
-			}
-			case 228, 1085: // Black Box, Festive Black Box
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
-				PrintToChat(client, "Black Box:");
-				PrintToChat(client, "+50% Clip Size");
-				PrintToChat(client, "On-Hit: +5 Health");
-				PrintToChat(client, "+75% Faster Firing Speed");
-				PrintToChat(client, "+200% Self Damage Push Force");
-				PrintToChat(client, "+250% Max Primary Ammo");
-				PrintToChat(client, "-40% Blast Damage from rocket jumps");
-				PrintToChat(client, "While a medic is healing you, this weapon's damage is increased by +50%");
-				PrintToChat(client, "No Random Critical Hits");
-				PrintToChat(client, "-50% Blast Radius");
-				PrintToChat(client, "While not being healed by a medic, your weapon switch time is +30% longer");
-			}
-			case 414: // Liberty Launcher
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 5, 10, "1 ; 0.75 ; 4 ; 1.75 ; 6 ; 0.4 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.85 ; 103 ; 2 ; 135 ; 0.50");
-				PrintToChat(client, "Liberty Launcher:");
-				PrintToChat(client, "-25% Damage Penalty");
-				PrintToChat(client, "+75% Clip Size");
-				PrintToChat(client, "+60% Faster Firing Speed");
-				PrintToChat(client, "+200% Self Damage Push Force");
-				PrintToChat(client, "+250% Max Primary Ammo");
-				PrintToChat(client, "-50% Blast Damage from rocket jumps");
-				PrintToChat(client, "-15% Blast Radius");
-			}
-			case 730: //Beggar's Bazooka
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 5, 10, "135 ; 0.25 ; 58 ; 1.5 ; 2 ; 1.1 ; 4 ; 7.5 ; 6 ; 0 ; 76 ; 10 ; 97 ; 0.40 ; 411 ; 15 ; 413 ; 1 ; 417 ; 1");
-				PrintToChat(client, "Beggar's Bazooka:");
-				PrintToChat(client, "+10% Damage Bonus");
-				PrintToChat(client, "+650% Clip Size");
-				PrintToChat(client, "+85% Faster Firing Speed");
-				PrintToChat(client, "+50% Self Damage Push Force");
-				PrintToChat(client, "+1000% Max Primary Ammo");
-				PrintToChat(client, "+50% Faster reload speed");
-				PrintToChat(client, "-75% Blast Damage from rocket jumps");
-				PrintToChat(client, "+30 Degrees Random Projectile Deviation");
-				PrintToChat(client, "Hold Fire to load up to 30 Rockets");
-				PrintToChat(client, "Overloading will Misfire");
-			}
-			case 1104: // Air Strike
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 3 ; 621 ; 0.35 ; 642 ; 1 ; 643 ; 0.75 ; 644 ; 10");
-				PrintToChat(client, "Air Strike:");
-				PrintToChat(client, "Increased Attack speed while blast jumping");
-				PrintToChat(client, "Rocket Specialist");
-				PrintToChat(client, "Clip size increased as you deal damage");
-				PrintToChat(client, "When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
-				PrintToChat(client, "Wearer never takes fall damage");
-				PrintToChat(client, "-10% Damage Penalty");
-				PrintToChat(client, "No Random Critical Hits");
+				weapon=SpawnWeapon(client, "tf_weapon_minigun", 15, 5, 10, "375 ; 50");
+				CPrintToChat(client, "Minigun:");
+				CPrintToChat(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use.");
 			}
 			case 18, 205, 237, 513, 658, 800, 809, 889, 898, 907, 916, 965, 974: // For other rocket launcher reskins
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
 				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 5, 10, "138 ; 0.70 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 4 ; 65 ; 1.30 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
-				PrintToChat(client, "Rocket Launcher:");
-				PrintToChat(client, "+100& Clip Size");
-				PrintToChat(client, "+75% Faster firing speed");
-				PrintToChat(client, "+300% self damage push force");
-				PrintToChat(client, "+500% max primary ammo on wearer");
-				PrintToChat(client, "-70% Blast Damage from rocket jumps");
-				PrintToChat(client, "When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
-				PrintToChat(client, "Wearer never takes fall damage");
-				PrintToChat(client, "-30% Damage Penalty");
-				PrintToChat(client, "-30% explosive damage vulnerability on wearer");
-				PrintToChat(client, "No Random Critical Hits");
+				CPrintToChat(client, "Rocket Launcher:");
+				CPrintToChat(client, "{blue}+100& Clip Size");
+				CPrintToChat(client, "{blue}+75% Faster firing speed");
+				CPrintToChat(client, "{blue}+300% self damage push force");
+				CPrintToChat(client, "{blue}+500% max primary ammo on wearer");
+				CPrintToChat(client, "{blue}-70% Blast Damage from rocket jumps");
+				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
+				CPrintToChat(client, "{blue}Wearer never takes fall damage");
+				CPrintToChat(client, "{red}-30% Damage Penalty");
+				CPrintToChat(client, "{red}-30% explosive damage vulnerability on wearer");
+				CPrintToChat(client, "{red}No Random Critical Hits");
+			}
+			case 19, 206, 1007: // Grenade Launcher, Festive Grenade Launcher
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_grenadelauncher", 19, 5, 10, "2 ; 1.15 ; 4 ; 3 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4.5 ; 470 ; 0.75");
+				CPrintToChat(client, "Grenade Launcher:");
+				CPrintToChat(client, "{blue}+15% Damage bonus");
+				CPrintToChat(client, "{blue}+200% Clip Size");
+				CPrintToChat(client, "{blue}+350% Max Primary Ammo");
+				CPrintToChat(client, "{blue}+75% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+75% Faster Reload Time");
+				CPrintToChat(client, "{red}-25% damage on contact with surfaces");
+				
+			}
+			case 127: // Direct Hit
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_directhit", 127, 5, 10, "103 ; 2 ; 114 ; 1 ; 100 ; 0.30 ; 2 ; 1.50 ; 15 ; 1 ; 179 ; 1 ; 488 ; 3 ; 621 ; 0.35 ; 643 ; 0.75 ; 644 ; 10");
+				CPrintToChat(client, "Direct Hit:");
+				CPrintToChat(client, "{blue}+50% Damage bonus");
+				CPrintToChat(client, "{blue}+100% Projectile speed");
+				CPrintToChat(client, "{blue}Increased Attack speed while blast jumping");
+				CPrintToChat(client, "{blue}Rocket Specialist");
+				CPrintToChat(client, "{blue}Clip size increased as you deal damage");
+				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
+				CPrintToChat(client, "{blue}Wearer never takes fall damage");
+				CPrintToChat(client, "{blue}Minicrits airborne targets");
+				CPrintToChat(client, "{blue}Minicrits become crits");
+				CPrintToChat(client, "{red}-70% Explosion radius");
+				CPrintToChat(client, "{red}No Random Critical Hits");
+			}
+			case 228, 1085: // Black Box, Festive Black Box
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
+				CPrintToChat(client, "Black Box:");
+				CPrintToChat(client, "{blue}+50% Clip Size");
+				CPrintToChat(client, "{blue}On-Hit: +5 Health");
+				CPrintToChat(client, "{blue}+75% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+200% Self Damage Push Force");
+				CPrintToChat(client, "{blue}+250% Max Primary Ammo");
+				CPrintToChat(client, "{blue}-40% Blast Damage from rocket jumps");
+				CPrintToChat(client, "{blue}While a medic is healing you, this weapon's damage is increased by +50%");
+				CPrintToChat(client, "{red}No Random Critical Hits");
+				CPrintToChat(client, "{red}-50% Blast Radius");
+				CPrintToChat(client, "{red}While not being healed by a medic, your weapon switch time is +30% longer");
+			}
+			case 308: // Loch & Load
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_grenadelauncher", 308, 5, 10, "2 ; 1.75 ; 3 ; 0.5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 3 ; 127 ; 2");
+				CPrintToChat(client, "Loch-n-Load:");
+				CPrintToChat(client, "{blue}+75% Damage bonus");
+				CPrintToChat(client, "{red}-50% Clip Size");
+				CPrintToChat(client, "{blue}+200% Max Primary Ammo");
+				CPrintToChat(client, "{blue}+75% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+75% Faster Reload Time");
+				CPrintToChat(client, "{red}Launched bombs shatter on surfaces");
+			}
+			case 312: // Brass Beast
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_minigun", 312, 5, 10, "2 ; 1.2 ; 86 ; 1.5 ; 183 ; 0.4 ; 375 ; 50");
+				CPrintToChat(client, "Brass Beast:");
+				CPrintToChat(client, "{blue}+20% Damage Bonus");
+				CPrintToChat(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use");
+				CPrintToChat(client, "{red}+50% Slower Spin-up Time");
+				CPrintToChat(client, "{red}-60% Slower move speed while deployed");
+			}
+			case 414: // Liberty Launcher
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 414, 5, 10, "1 ; 0.75 ; 4 ; 1.75 ; 6 ; 0.4 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.85 ; 103 ; 2 ; 135 ; 0.50");
+				CPrintToChat(client, "Liberty Launcher:");
+				CPrintToChat(client, "{blue}+75% Clip Size");
+				CPrintToChat(client, "{blue}+60% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+200% Self Damage Push Force");
+				CPrintToChat(client, "{blue}+250% Max Primary Ammo");
+				CPrintToChat(client, "{red}-25% Damage Penalty");
+				CPrintToChat(client, "{red}-50% Blast Damage from rocket jumps");
+				CPrintToChat(client, "{red}-15% Blast Radius");
+			}
+			case 424: // Tomislav
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_minigun", 424, 5, 10, "5 ; 1.1 ; 87 ; 1.1 ; 238 ; 1 ; 375 ; 50");
+				CPrintToChat(client, "Tomislav:");
+				CPrintToChat(client, "{blue}+10% Damage Bonus.");
+				CPrintToChat(client, "{blue}-10% Faster Spinup Time.");
+				CPrintToChat(client, "{blue}No Barrel Spinup Sound");
+				CPrintToChat(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use");
+				CPrintToChat(client, "{red}+20% Slower Firing Speed");
+			}
+			case 441: //Cow Mangler
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_particle_cannon", 441, 5, 10, "2 ; 1.5 ; 58 ; 2 ; 281 ; 1 ; 282 ; 1 ; 288 ; 1 ; 366 ; 5");
+				CPrintToChat(client, "Cow Mangler:");
+				CPrintToChat(client, "{blue}+50% damage bonus");
+				CPrintToChat(client, "{blue}+100% Self Damage Push Force");
+				CPrintToChat(client, "{blue}No Ammo needed");
+				CPrintToChat(client, "{blue}A successful hit mid-air stuns Blitzkrieg for 5 seconds");
+
+			}
+			case 730: //Beggar's Bazooka
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 730, 5, 10, "135 ; 0.25 ; 58 ; 1.5 ; 2 ; 1.1 ; 4 ; 7.5 ; 6 ; 0 ; 76 ; 10 ; 97 ; 0.25 ; 411 ; 15 ; 413 ; 1 ; 417 ; 1");
+				CPrintToChat(client, "Beggar's Bazooka:");
+				CPrintToChat(client, "{blue}+10% Damage Bonus");
+				CPrintToChat(client, "{blue}+650% Clip Size");
+				CPrintToChat(client, "{blue}+85% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+50% Self Damage Push Force");
+				CPrintToChat(client, "{blue}+1000% Max Primary Ammo");
+				CPrintToChat(client, "{blue}+75% Faster reload speed");
+				CPrintToChat(client, "{blue}-75% Blast Damage from rocket jumps");
+				CPrintToChat(client, "{blue}Hold Fire to load up to 30 Rockets");
+				CPrintToChat(client, "{red}Overloading will Misfire");
+				CPrintToChat(client, "{red}+30 Degrees Random Projectile Deviation");
+			}
+			case 811, 832: // Huo-Long Heater
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_minigun", 811, 5, 10, "71 ; 1.25 ; 76 ; 2 ; 206 ; 1.25 ; 375 ; 50 ; 430 ; 1 ; 431 ; 5");
+				CPrintToChat(client, "Huo-Long Heater:");
+				CPrintToChat(client, "{blue}+10% Max Primary Ammo on-wearer");				
+				CPrintToChat(client, "{blue}+25% Afterburn Damage Bonus");
+				CPrintToChat(client, "{blue}Sustains a ring of flames while deployed");
+				CPrintToChat(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use");
+				CPrintToChat(client, "{red}Uses +5 Ammo per second while deployed");
+				CPrintToChat(client, "{red}+25% damage from melee sources while active");
+			}
+			case 996: // Loose Cannon
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_cannon", 996, 5, 10, "2 ; 1.25 ; 4 ; 1.5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4 ; 466 ; 1 ; 467 ; 1 ; 470 ; 0.7");
+				CPrintToChat(client, "Loose Cannon:");
+				CPrintToChat(client, "{blue}+25% Damage bonus");
+				CPrintToChat(client, "{blue}+50% Clip Size");
+				CPrintToChat(client, "{blue}+300% Max Primary Ammo");
+				CPrintToChat(client, "{blue}+75% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+75% Faster Reload Time");
+				CPrintToChat(client, "{red}-30% damage on contact with surfaces");
+				CPrintToChat(client, "{red}Cannonballs have a fuse time of 1 second; fuses can be primed to explode earlier by holding down the fire key.");
+				CPrintToChat(client, "{red}Cannonballs do not explode on impact");
+			}
+			case 1104: // Air Strike
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher_airstrike", 1104, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 3 ; 621 ; 0.35 ; 642 ; 1 ; 643 ; 0.75 ; 644 ; 10");
+				CPrintToChat(client, "Air Strike:");
+				CPrintToChat(client, "{blue}Increased Attack speed while blast jumping");
+				CPrintToChat(client, "{blue}Rocket Specialist");
+				CPrintToChat(client, "{blue}Clip size increased as you deal damage");
+				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
+				CPrintToChat(client, "{blue}Wearer never takes fall damage");
+				CPrintToChat(client, "{red}-10% Damage Penalty");
+				CPrintToChat(client, "{red}No Random Critical Hits");
 			}
 			case 1153: // Panic Attack
 			{
-				if(TF2_GetPlayerClass(client)==TFClass_Engineer)
-				{
-					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-					weapon=SpawnWeapon(client, "tf_weapon_shotgun_primary", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");	
-					PrintToChat(client, "Panic Attack (while active):");
-					PrintToChat(client, "+75& Faster move speed");
-					PrintToChat(client, "+34% faster reload time");
-					PrintToChat(client, "When the medic healing you is killed, you gain mini crits for 15 seconds");
-					PrintToChat(client, "+50% blast, fire & crit damage vulnerability");
-					PrintToChat(client, "Hold fire to load up to 6 shells");
-					PrintToChat(client, "Fire rate increases as health decreases");
-					PrintToChat(client, "Weapon spread increases as health decreases");
-				}
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_shotgun_primary", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");	
+				CPrintToChat(client, "Panic Attack (while active):");
+				CPrintToChat(client, "{blue}+75& Faster move speed");
+				CPrintToChat(client, "{blue}+34% faster reload time");
+				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini crits for 15 seconds");
+				CPrintToChat(client, "{blue}+50% blast, fire & crit damage vulnerability");
+				CPrintToChat(client, "{blue}Hold fire to load up to 6 shells");
+				CPrintToChat(client, "{blue}Fire rate increases as health decreases");
+				CPrintToChat(client, "{red}Weapon spread increases as health decreases");
+			}
+			case 1151: // Iron Bomber
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_grenadelauncher", 1151, 5, 10, "2 ; 1.10 ; 4 ; 5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 6 ; 671 ; 1 ; 684 ; 0.6");
+				CPrintToChat(client, "Iron Bomber:");
+				CPrintToChat(client, "{blue}+10% Damage bonus");
+				CPrintToChat(client, "{blue}+400% Clip Size");
+				CPrintToChat(client, "{blue}+500% Max Primary Ammo");
+				CPrintToChat(client, "{blue}+75% Faster Firing Speed");
+				CPrintToChat(client, "{blue}+75% Faster Reload Time");
+				CPrintToChat(client, "{red}-40% damage on grenades that explode on timer");
+				CPrintToChat(client, "{red}Grenades have very little bound and roll");
 			}
 		}
 	}
-}
-
-SecondaryWeapons(client)
-{
-	new weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
-	new index=-1;
+	// Secondary
+	weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
 	if(weapon && IsValidEdict(weapon))
 	{
 		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
@@ -1163,82 +1538,137 @@ SecondaryWeapons(client)
 			case 39, 351, 740, 1081: // Flaregun, Detonator, Scorch Shot & Festive Flare Gun
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, "tf_weapon_flaregun", 351, 5, 10, "1 ; 0.75 ; 25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
-				PrintHintText(client, "Detonator deals crits vs burning players. No random crits. -25% damage penalty.");
-				PrintToChat(client, "Detonator:");
-				PrintToChat(client, "Crits vs Burning Players");
-				PrintToChat(client, "+450% self damage push force");
-				PrintToChat(client, "-25% damage penalty");
-				PrintToChat(client, "No crits vs non-burning");
-				PrintToChat(client, "No Random Critical Hits");
+				weapon=SpawnWeapon(client, "tf_weapon_flaregun", 351, 5, 10, "25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
+				CPrintToChat(client, "Detonator:");
+				CPrintToChat(client, "{blue}Crits vs Burning Players");
+				CPrintToChat(client, "{blue}+450% self damage push force");
+				CPrintToChat(client, "{red}No crits vs non-burning");
+				CPrintToChat(client, "{red}No Random Critical Hits");
 			}
 			case 42, 863, 1002: // Sandvich, Robo-Sandvich & Festive Sandvich
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);					
 				weapon=SpawnWeapon(client, "tf_weapon_lunchbox", 42, 5, 10, "144 ; 4 ; 278 ; 0.5");
-				PrintToChat(client, "Sandvich:");
-				PrintToChat(client, "+50% Faster Regen Rate");
+				CPrintToChat(client, "Sandvich:");
+				CPrintToChat(client, "{blue}+50% Faster Regen Rate");
 			}
 			case 129, 1001: // Buff Banner
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
 				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
-				PrintHintText(client, "+150% longer buff duration, +50 Max HP");
-				PrintToChat(client, "Buff Banner:");
-				PrintToChat(client, "+150% longer buff duration");
-				PrintToChat(client, "+50% max health");
+				CPrintToChat(client, "Buff Banner:");
+				CPrintToChat(client, "{blue}+150% longer buff duration");
+				CPrintToChat(client, "{blue}+50% max health");
 			}
 			case 226: // Battalion's Backup
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
 				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 226, 5, 10, "26 ; 50 ; 116 ; 2 ; 292 ; 51 ; 319 ; 2.50");
-				PrintToChat(client, "Battalion's Backup:");
-				PrintToChat(client, "+150% longer buff duration");
-				PrintToChat(client, "+50% max health");
+				CPrintToChat(client, "Battalion's Backup:");
+				CPrintToChat(client, "{blue}+150% longer buff duration");
+				CPrintToChat(client, "{blue}+50% max health");
 			}
 			case 354: // Concheror
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
 				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 354, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
-				PrintToChat(client, "Concheror:");
-				PrintToChat(client, "+150% longer buff duration");
-				PrintToChat(client, "+50% max health");
+				CPrintToChat(client, "Concheror:");
+				CPrintToChat(client, "{blue}+150% longer buff duration");
+				CPrintToChat(client, "{blue}+50% max health");
 			}
 			case 1153: // Panic Attack
 			{
-				if(TF2_GetPlayerClass(client)==TFClass_Soldier||TF2_GetPlayerClass(client)==TFClass_Pyro||TF2_GetPlayerClass(client)==TFClass_Heavy)
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
+				switch(TF2_GetPlayerClass(client))
 				{
-					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-					if(TF2_GetPlayerClass(client)==TFClass_Soldier)
+					case TFClass_Soldier:
 						weapon=SpawnWeapon(client, "tf_weapon_shotgun_soldier", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
-					if(TF2_GetPlayerClass(client)==TFClass_Pyro)
+					case TFClass_Pyro:
 						weapon=SpawnWeapon(client, "tf_weapon_shotgun_pyro", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
-					if(TF2_GetPlayerClass(client)==TFClass_Heavy)
+					case TFClass_Heavy:
 						weapon=SpawnWeapon(client, "tf_weapon_shotgun_hwg", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
-					PrintToChat(client, "Panic Attack (while active):");
-					PrintToChat(client, "+75& Faster move speed");
-					PrintToChat(client, "+34% faster reload time");
-					PrintToChat(client, "When the medic healing you is killed, you gain mini crits for 15 seconds");
-					PrintToChat(client, "+50% blast, fire & crit damage vulnerability");
-					PrintToChat(client, "Hold fire to load up to 6 shells");
-					PrintToChat(client, "Fire rate increases as health decreases");
-					PrintToChat(client, "Weapon spread increases as health decreases");
+					default: // For Randomizer Compatibility
+						weapon=SpawnWeapon(client, "tf_weapon_shotgun_soldier", 1153, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
 				}
+				CPrintToChat(client, "Panic Attack (while active):");
+				CPrintToChat(client, "{blue}+75& Faster move speed");
+				CPrintToChat(client, "{blue}+34% faster reload time");
+				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini crits for 15 seconds");
+				CPrintToChat(client, "{blue}+50% blast, fire & crit damage vulnerability");
+				CPrintToChat(client, "{blue}Hold fire to load up to 6 shells");
+				CPrintToChat(client, "{blue}Fire rate increases as health decreases");
+				CPrintToChat(client, "{red}Weapon spread increases as health decreases");
 			}
 			case 29, 35, 211, 411, 663, 796, 805, 885, 894, 903, 912, 961, 970, 998:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
 				SpawnWeapon(client, "tf_weapon_medigun", 29, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
-				PrintToChat(client, "Medigun:");
-				PrintToChat(client, "Use +attack3 (default middle mouse button) to deploy projectile shield");
-				PrintToChat(client, "Overheal Expert applied");
-				PrintToChat(client, "Healing Mastery applied");
-				PrintToChat(client, "+25% faster charge rate");
-				PrintToChat(client, "+25% faster weapon switch");
-				PrintToChat(client, "+50% overheal bonus");
+				CPrintToChat(client, "Medigun:");
+				CPrintToChat(client, "{blue}Use +attack3 (default middle mouse button) to deploy projectile shield");
+				CPrintToChat(client, "{blue}Overheal Expert applied");
+				CPrintToChat(client, "{blue}Healing Mastery applied");
+				CPrintToChat(client, "{blue}+25% faster charge rate");
+				CPrintToChat(client, "{blue}+25% faster weapon switch");
+				CPrintToChat(client, "{blue}+50% overheal bonus");
 			}
 		}
 	}
+	// Melee Weapons
+	weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
+	if(weapon && IsValidEdict(weapon))
+	{
+		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+		switch(index)
+		{
+			case 44:
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
+				SpawnWeapon(client, "tf_weapon_bat_wood", 44, 5, 10, "38 ; 1 ; 125 ; -15 ; 249 ; 1.5 ; 279 ; 5");
+				CPrintToChat(client, "Sandman:");	
+				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
+				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
+				CPrintToChat(client, "{blue}Alt-fire to launch baseball");			
+				CPrintToChat(client, "{red}-15% Max Health");
+				SetAmmo(client, TFWeaponSlot_Melee, 5);
+			}
+			
+			case 648:
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
+				SpawnWeapon(client, "tf_weapon_bat_giftwrap", 648, 5, 10, "1 , 0.3 ; 346 ; 1 ; 249 ; 1.5 ; 279 ; 5");
+				CPrintToChat(client, "Wrap Assassin:");	
+				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
+				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
+				CPrintToChat(client, "{blue}Alt-fire to launch ornament");			
+				CPrintToChat(client, "{red}-70% Damage Penalty");
+				SetAmmo(client, TFWeaponSlot_Melee, 5);
+			}
+		}
+	}
+	// Build PDA
+	weapon=GetPlayerWeaponSlot(client, 3);
+	if(weapon && IsValidEdict(weapon))
+	{
+		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+		switch(index)
+		{
+			case 25, 737:
+			{
+				TF2_RemoveWeaponSlot(client, 3);
+				SpawnWeapon(client, "tf_weapon_pda_engineer_build", 25, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
+				CPrintToChat(client, "Construction PDA:");
+				CPrintToChat(client, "{blue}Teleporters are bi-directional");
+				CPrintToChat(client, "{blue}+10 Metal regenerated every 5 seconds");
+				CPrintToChat(client, "{blue}+300% Dispenser range");
+				CPrintToChat(client, "{blue}+30% Faster build speed");
+				CPrintToChat(client, "{blue}+150% Building Health");
+				CPrintToChat(client, "{blue}+25% Faster sentry firing speed");
+				CPrintToChat(client, "{blue}+25% Sentry damage bonus");
+			}
+		}
+	}
+	if(TF2_GetPlayerClass(client) == TFClass_Scout || TF2_GetPlayerClass(client) == TFClass_Spy)
+		TF2_AddCondition(client, TFCond:TFCond_CritCanteen, TFCondDuration_Infinite);
 }
 
 // Teleport Event
@@ -1282,31 +1712,90 @@ Teleport_Me(client)
 }
 
 
-// ESSENTIAL CODE TO GET THE REANIMATOR WORKING
+// Help Panel
 
+PlayerHelpPanel(client)
+{
+	new String:text[5120];
+	new TFClassType:class=TF2_GetPlayerClass(client);
+	SetGlobalTransTarget(client);
+	switch(class)
+	{
+		case TFClass_Scout:
+		{
+			Format(text, sizeof(text), "%t", "help_scout");
+		}
+		case TFClass_Soldier:
+		{
+			Format(text, sizeof(text), "%t", "help_soldier");
+		}
+		case TFClass_Pyro:
+		{
+			Format(text, sizeof(text), "%t", "help_pyro");
+		}
+		case TFClass_DemoMan:
+		{
+			Format(text, sizeof(text), "%t", "help_demo");
+		}
+		case TFClass_Heavy:
+		{
+			Format(text, sizeof(text), "%t", "help_heavy");
+		}
+		case TFClass_Engineer:
+		{
+			Format(text, sizeof(text), "%t", "help_engy");
+		}
+		case TFClass_Medic:
+		{
+			Format(text, sizeof(text), "%t", "help_medic");
+		}
+		case TFClass_Sniper:
+		{
+			Format(text, sizeof(text), "%t", "help_sniper");
+		}
+		case TFClass_Spy:
+		{
+			Format(text, sizeof(text), "%t", "help_spy");
+		}
+	}
+	new Handle:panel=CreatePanel();
+	SetPanelTitle(panel, text);
+	DrawPanelItem(panel, "Exit");
+	SendPanelToClient(panel, client, HintPanelH, 20);
+	CloseHandle(panel);
+}
+
+public HintPanelH(Handle:menu, MenuAction:action, client, selection)
+{
+	if(IsValidClient(client) && (action==MenuAction_Select || (action==MenuAction_Cancel && selection==MenuCancel_Exit)))
+	{
+		CPrintToChat(client, "%t", "good_luck");
+	}
+}
+
+
+// ESSENTIAL CODE TO GET THE REANIMATOR WORKING
 stock DropReanimator(client) 
 {
-	PrintToServer("DropReanimator(client)");
-	// spawn the Revive Marker
 	new clientTeam = GetClientTeam(client);
-	reviveMarker = CreateEntityByName("entity_revive_marker");
-	if (reviveMarker != -1)
+	reviveMarker[client] = CreateEntityByName("entity_revive_marker");
+	if (reviveMarker[client] != -1)
 	{
-		SetEntPropEnt(reviveMarker, Prop_Send, "m_hOwner", client); // client index 
-		SetEntProp(reviveMarker, Prop_Send, "m_nSolidType", 2); 
-		SetEntProp(reviveMarker, Prop_Send, "m_usSolidFlags", 8); 
-		SetEntProp(reviveMarker, Prop_Send, "m_fEffects", 16); 	
-		SetEntProp(reviveMarker, Prop_Send, "m_iTeamNum", clientTeam); // client team 
-		SetEntProp(reviveMarker, Prop_Send, "m_CollisionGroup", 1); 
-		SetEntProp(reviveMarker, Prop_Send, "m_bSimulatedEveryTick", 1); 
-		SetEntProp(reviveMarker, Prop_Send, "m_nBody", _:TF2_GetPlayerClass(client) - 1); 
-		SetEntProp(reviveMarker, Prop_Send, "m_nSequence", 1); 
-		SetEntPropFloat(reviveMarker, Prop_Send, "m_flPlaybackRate", 1.0);  
-		SetEntProp(reviveMarker, Prop_Data, "m_iInitialTeamNum", clientTeam);
-		SetEntDataEnt2(client, FindSendPropInfo("CTFPlayer", "m_nForcedSkin")+4, reviveMarker);
+		SetEntPropEnt(reviveMarker[client], Prop_Send, "m_hOwner", client); // client index 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_nSolidType", 2); 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_usSolidFlags", 8); 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_fEffects", 16); 	
+		SetEntProp(reviveMarker[client], Prop_Send, "m_iTeamNum", clientTeam); // client team 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_CollisionGroup", 1); 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_bSimulatedEveryTick", 1); 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_nBody", _:TF2_GetPlayerClass(client) - 1); 
+		SetEntProp(reviveMarker[client], Prop_Send, "m_nSequence", 1); 
+		SetEntPropFloat(reviveMarker[client], Prop_Send, "m_flPlaybackRate", 1.0);  
+		SetEntProp(reviveMarker[client], Prop_Data, "m_iInitialTeamNum", clientTeam);
+		SetEntDataEnt2(client, FindSendPropInfo("CTFPlayer", "m_nForcedSkin")+4, reviveMarker[client]);
 		if(GetClientTeam(client) == 3)
-			SetEntityRenderColor(reviveMarker, 0, 0, 255); // make the BLU Revive Marker distinguishable from the red one
-		DispatchSpawn(reviveMarker);
+			SetEntityRenderColor(reviveMarker[client], 0, 0, 255); // make the BLU Revive Marker distinguishable from the red one
+		DispatchSpawn(reviveMarker[client]);
 		CreateTimer(0.1, MoveMarker, GetClientUserId(client));
 		if(decayTimers[client] == INVALID_HANDLE) 
 		{
@@ -1320,20 +1809,17 @@ public Action:MoveMarker(Handle:timer, any:userid)
 	new client = GetClientOfUserId(userid);
 	new Float:position[3];
 	GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
-	TeleportEntity(reviveMarker, position, NULL_VECTOR, NULL_VECTOR);
+	TeleportEntity(reviveMarker[client], position, NULL_VECTOR, NULL_VECTOR);
 }
 
 stock RemoveReanimator(client)
 {
-	// set team and class change variable
 	currentTeam[client] = GetClientTeam(client);
 	ChangeClass[client] = false;
-	// kill Revive Marker if it exists
-	if (IsValidMarker(reviveMarker)) 
+	if (IsValidMarker(reviveMarker[client])) 
 	{
-		AcceptEntityInput(reviveMarker, "Kill");
+		AcceptEntityInput(reviveMarker[client], "Kill");
 	} 
-	// kill Decay Timer when it exists
 	if (decayTimers[client] != INVALID_HANDLE) 
 	{
 		KillTimer(decayTimers[client]);
@@ -1355,48 +1841,55 @@ public bool:IsValidMarker(marker)
 	return false;
 }
 
-public Action:OnPlayerRevive(Handle:event, const String:name[], bool:dontbroadcast) 
+public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(blitzisboss==true)
+	new Boss = FF2_GetBossIndex(client);
+	if (FF2_HasAbility(Boss, this_plugin_name, "blitzkrieg_config"))
 	{
-		RemoveReanimator(client);
-		CreateTimer(0.1, CheckItems, client);
+		blitzisboss = true;
+		barrage = false;
+		BlitzIsWinner = false;
+		customweapons=FF2_GetAbilityArgument(Boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+		EmitSoundToAll(BLITZROUNDSTART);
 	}
+	if(blitzisboss)
+		RemoveReanimator(client);
 	else
 		return Plugin_Stop;
 	return Plugin_Continue;
 }
 
-public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
+public Action:OnPlayerInventory(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(blitzisboss==true)
+	if(blitzisboss)
 	{
-		CreateTimer(0.1, CheckItems, client);
+		if(customweapons)
+		{
+			if(IsClientInGame(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+			{		
+				CheckWeapons(client);
+			}
+		}
 	}
-	else
-		return Plugin_Stop;
 	return Plugin_Continue;
 }
 
 public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcast) 
 {
-	if(blitzisboss==true)
+	if(blitzisboss)
 	{
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		ChangeClass[client] = true;
-		CreateTimer(0.1, CheckItems, client);
 	}
-	else
-		return Plugin_Stop;
 	return Plugin_Continue;
 }
 
 public Action:TimeBeforeRemoval(Handle:timer, any:userid) 
 {
 	new client = GetClientOfUserId(userid);
-	if(!IsValidMarker(reviveMarker) || !IsClientInGame(client)) 
+	if(!IsValidMarker(reviveMarker[client]) || !IsClientInGame(client)) 
 		return Plugin_Handled;
 	RemoveReanimator(client);
 	if(decayTimers[client] != INVALID_HANDLE)
@@ -1409,20 +1902,34 @@ public Action:TimeBeforeRemoval(Handle:timer, any:userid)
 
 public OnClientDisconnect(client) 
 {
-	// remove the marker
-	RemoveReanimator(client);
-	// reset storage array values
-	currentTeam[client] = 0;
-	ChangeClass[client] = false;
+	if(blitzisboss)
+	{
+		if(allowrevive)
+		{
+			RemoveReanimator(client);
+		}
+		currentTeam[client] = 0;
+		ChangeClass[client] = false;
+	}
  }
 
 // Notification System:
 
 public Action:CheckLevel(client, args)
 {
-	if(blitzisboss==true)
+	if(blitzisboss)
 	{
 		DisplayCurrentDifficulty(client);
+		return Plugin_Handled;
+	}
+	return Plugin_Continue;
+}
+
+public Action:BlitzHelp(client, args)
+{
+	if(blitzisboss)
+	{
+		PlayerHelpPanel(client);
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;
@@ -1433,91 +1940,65 @@ public Action:PostSetup(Handle:hTimer, any:userid)
 	// Because the previous method was acting up and not giving the weapons as its supposed to.
 	for(new client = 1; client <= MaxClients; client++ )
 	{
-		if(customweapons!=0)
+		if(blitzisboss && customweapons)
+		{
 			if(IsClientInGame(client) && IsPlayerAlive(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 			{		
-				PrimaryWeapons(client);
-				SecondaryWeapons(client);
-				if(TF2_GetPlayerClass(client)==TFClass_Engineer)
-				{
-					TF2_RemoveWeaponSlot(client, TFWeaponSlot_Grenade);
-					SpawnWeapon(client, "tf_weapon_pda_engineer_build", 25, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
-					PrintToChat(client, "Construction PDA:");
-					PrintToChat(client, "Teleporters are bi-directional");
-					PrintToChat(client, "+10 Metal regenerated every 5 seconds");
-					PrintToChat(client, "+300% Dispenser range");
-					PrintToChat(client, "+30% Faster build speed");
-					PrintToChat(client, "+150% Building Health");
-					PrintToChat(client, "+25% Faster sentry firing speed");
-					PrintToChat(client, "+25% Sentry damage bonus");
-				}
+				CheckWeapons(client);
+				if(!IsFakeClient(client))
+					PlayerHelpPanel(client);
 			}
+		}
 	}
 }
 
 DisplayCurrentDifficulty(client)
 {
-	decl String:msg[1024];
+	new String:msg[1024], String:spcl[768], String:bDiff[100];
+	new d_Boss=GetClientOfUserId(FF2_GetBossUserId(client));
+	FF2_GetBossSpecial(d_Boss, spcl, sizeof(spcl));
 	switch(weapondifficulty)
 	{
 		case 1:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Easy");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Easy");
-			PrintHintText(client,"Difficulty: Easy");
-		}
+			bDiff="Easy";
 		case 2:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Normal");
-			CPrintToChatAll("[FF2] Blitzkrieg's Difficulty: Normal");
-			PrintHintText(client,"Difficulty: Normal");
-		}
+			bDiff="Normal";
 		case 3:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Intermediate");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Intermediate");
-			PrintHintText(client,"Difficulty: Intermediate");
-		}
+			bDiff="Intermediate";
 		case 4:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Difficult");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Difficult");
-			PrintHintText(client,"Difficulty: Difficult");
-		}
+			bDiff="Difficult";
 		case 5:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Lunatic");
-			PrintHintText(client,"Difficulty: Lunatic");
-		}
+			bDiff="Lunatic";
 		case 6:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Insane");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Insane");
-			PrintHintText(client,"Difficulty: Insane");
-		}
+			bDiff="Insane";
 		case 7:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Godlike");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Godlike");
-			PrintHintText(client,"Difficulty: Godlike");
-		}
+			bDiff="Godlike";
 		case 8:
-		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Rocket Hell");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Rocket Hell");
-			PrintHintText(client,"Difficulty: Rocket Hell");
-		}
+			bDiff="Rocket Hell";
 		case 9:
+			bDiff="Total Blitzkrieg";
+		case 420:
+			bDiff="MLG Pro - Level 420";
+		case 1337:
+			bDiff="MLG Pro - Level 1337";
+		case 9001:
 		{
-			Format(msg, sizeof(msg), "Blitzkrieg's Current Difficulty Level: Total Blitzkrieg");
-			CPrintToChatAll("[FF2] The Blitzkrieg's Difficulty: Total Blitzkrieg");
-			PrintHintText(client,"Difficulty: Total Blitzkrieg");
+			bDiff="OVER 9000!";
+			EmitSoundToAll(OVER_9000);
+			EmitSoundToAll(OVER_9000);
+		}
+	}
+	switch(weapondifficulty)
+	{
+		case 0:
+		{
+			Format(msg, sizeof(msg), "%t", "blitz_inactive");
+			CPrintToChatAll("%t", "blitz_inactive2");
 		}
 		default:
 		{
-			Format(msg, sizeof(msg), "Please wait until round has started to check difficulty!");
-			CPrintToChatAll("[FF2] The Blitzkrieg: Please wait until round has started!");
-			PrintHintText(client,"Please wait until round has started to check difficulty!");
+			Format(msg, sizeof(msg), "%t", "blitz_difficulty", spcl, bDiff);
+			CPrintToChatAll("%t", "blitz_difficulty2", spcl, bDiff);
 		}
 	}
 	ShowGameText(msg);
@@ -1528,7 +2009,7 @@ ShowGameText(const String:strMessage[])
     new iEntity = CreateEntityByName("game_text_tf");
     DispatchKeyValue(iEntity,"message", strMessage);
     DispatchKeyValue(iEntity,"display_to_team", "0");
-    DispatchKeyValue(iEntity,"icon", "firedeath");
+    DispatchKeyValue(iEntity,"icon", "ico_notify_on_fire");
     DispatchKeyValue(iEntity,"targetname", "game_text1");
     DispatchKeyValue(iEntity,"background", "0");
     DispatchSpawn(iEntity);
@@ -1595,62 +2076,11 @@ stock bool:IsValidClient(client)
 	return true;
 }
 
-public Action:CheckItems(Handle:hTimer, any:client)
-{
-	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
-	{
-		PrimaryWeapons(client);
-		SecondaryWeapons(client);
-		if(TF2_GetPlayerClass(client)==TFClass_Engineer)
-		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Grenade);
-			SpawnWeapon(client, "tf_weapon_pda_engineer_build", 25, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
-			PrintToChat(client, "Construction PDA:");
-			PrintToChat(client, "Teleporters are bi-directional");
-			PrintToChat(client, "+10 Metal regenerated every 5 seconds");
-			PrintToChat(client, "+300% Dispenser range");
-			PrintToChat(client, "+30% Faster build speed");
-			PrintToChat(client, "+150% Building Health");
-			PrintToChat(client, "+25% Faster sentry firing speed");
-			PrintToChat(client, "+25% Sentry damage bonus");
-		}
-	}
-}
 
-// Events
 
-public Action:OnSetupTime(Handle:event, const String:name[], bool:dontBroadcast)
+public Action:OnAnnounce(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	// Events During Setup Time
-	if (FF2_IsFF2Enabled())
-	{
-		dBoss=GetClientOfUserId(FF2_GetBossUserId());
-		if (dBoss>0)
-		{
-			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
-			{	
-				CreateTimer(0.5,GetSetup,dBoss);
-			}
-			else
-				return Plugin_Handled;
-		}
-		return Plugin_Continue;
-	}
-	return Plugin_Continue;
-}
-
-public Action:GetSetup(Handle:hTimer, any:userid)
-{
-	new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
-	blitzisboss = true;
-	barrage = false;
-	customweapons=FF2_GetAbilityArgument(Boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
-	EmitSoundToAll(BLITZROUNDSTART);
-}
-
-public Action:OnAnnounce(Handle:event, const String:name[], bool:dontBroadcast) // Thanks pheadxdll
-{
-	if(blitzisboss==true)
+	if(blitzisboss)
 	{
 		new String:strAudio[40];
 		GetEventString(event, "sound", strAudio, sizeof(strAudio));
@@ -1675,44 +2105,60 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		{
 			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
 			{	
-				if(blitzisboss==false)
+				if(bRdm)
+					bRdm = false;
+				if(!blitzisboss)
 					blitzisboss = true;
-				if(barrage==true)
+				if(barrage)
 					barrage = false;
 				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
 				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
-				if(customweapons==0) // Just to double check
+				if(!customweapons) // Just to double check
 					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons (failsafe)
 				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
-				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5); // RAGE/Weaponswitch Ammo
-				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6); // Blitzkrieg Rampage Ammo
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5, 180); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6, 360); // Blitzkrieg Rampage Ammo
 				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
 				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
 				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
-				minlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 10, 1); // Minimum level to roll on random mode
+				minlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 10, 2); // Minimum level to roll on random mode
 				maxlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 11, 5); // Max level to roll on random mode
 				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
-				if(weapondifficulty==0)
+				if(!weapondifficulty)
+				{
+					bRdm = true;
 					weapondifficulty=GetRandomInt(minlvl,maxlvl);
+				}
 				switch(combatstyle)
 				{
 					case 1:
 					{
-						PrintHintText(dBoss, "You must rely on your rockets to finish enemies off!");
+						PrintHintText(dBoss, "%t", "combatmode_nomelee");
 						PlotTwist(dBoss);
 					}
 					case 0:
 					{
-						PrintHintText(dBoss, "Use your melee weapon to finish off nearby enemies!");
+						PrintHintText(dBoss, "%t", "combatmode_withmelee");
 						PlotTwist(dBoss);
 					}
 				}
-				if(customweapons!=0)
+				if(customweapons)
 					CreateTimer(0.1, PostSetup);
 				DisplayCurrentDifficulty(dBoss);
+				if(lvlup)
+				{
+					CreateTimer(6.0, WhatWereYouThinking);
+				}
 			}
 		}
 	}
+}
+
+public Action: WhatWereYouThinking(Handle:hTimer, any:userid)
+{
+	new String:BlitzAlert[PLATFORM_MAX_PATH];
+	strcopy(BlitzAlert, PLATFORM_MAX_PATH, BlitzCanLvlUp[GetRandomInt(0, sizeof(BlitzCanLvlUp)-1)]);
+	EmitSoundToAll(BlitzAlert);
 }
 
 public PreDeath(Handle:event, const String:name[], bool:dontBroadcast)
@@ -1742,20 +2188,31 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 	new attacker=GetClientOfUserId(GetEventInt(event, "attacker"));
 	new client=GetClientOfUserId(GetEventInt(event, "userid"));
 	new bossAttacker=FF2_GetBossIndex(attacker);
-	if(blitzisboss==true)
-		if(attacker!=client && (GetClientTeam(client)!=FF2_GetBossTeam()) || attacker==client && (GetClientTeam(client)!=FF2_GetBossTeam()))
-			if(allowrevive!=0)
+	if(blitzisboss)
+		if((attacker!=client || attacker==client) && (GetClientTeam(client)!=FF2_GetBossTeam()))
+			if(allowrevive)
 				DropReanimator(client);
 	if(bossAttacker!=-1)
 	{
 		if(FF2_HasAbility(bossAttacker, this_plugin_name, "blitzkrieg_config"))
 		{
+			new Float:rageonkill = FF2_GetAbilityArgumentFloat(bossAttacker,this_plugin_name,"blitzkrieg_config",13,0.0);
+			new Float:bRage = FF2_GetBossCharge(bossAttacker,0);
+			if(rageonkill)
+			{
+				if(bRage > 100) // We don't want RAGE to exceed more than 100%
+					FF2_SetBossCharge(bossAttacker, 0, 100.0);
+				else if(100.0 - bRage < rageonkill)
+					FF2_SetBossCharge(bossAttacker, 0, bRage + (100.0 - bRage));
+				else if (100.0 - bRage > rageonkill)
+					FF2_SetBossCharge(bossAttacker, 0, bRage+rageonkill);
+			}
 			if(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")==GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
 			{
-				if(combatstyle!=0)
+				if(combatstyle)
 				{	
 					TF2_RemoveWeaponSlot(attacker, TFWeaponSlot_Primary);
-					if(barrage==true)
+					if(barrage)
 					{
 						BlitzkriegBarrage(attacker);
 						SetAmmo(attacker, TFWeaponSlot_Primary, blitzkriegrage);
@@ -1764,8 +2221,7 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 					{
 						RandomDanmaku(attacker);
 						SetAmmo(attacker, TFWeaponSlot_Primary,999999);
-					}
-					
+					}		
 				}	
 			}
 		}
@@ -1775,17 +2231,45 @@ public Action:OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcas
 
 public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	CreateTimer(0.2, TimeBeforeRemoval, client);
-	if (crockethell!=INVALID_HANDLE)
+	if(blitzisboss)
 	{
-		CloseHandle(crockethell);
-		crockethell = INVALID_HANDLE;
+		if (crockethell!=INVALID_HANDLE)
+		{
+			CloseHandle(crockethell);
+			crockethell = INVALID_HANDLE;
+		}
+		weapondifficulty = 0;
+		allowrevive = 0;
+		barrage = false;
+		bRdm = false;
+		blitzisboss = false;
+		for(new i = 1; i <= MaxClients; i++ )
+		{
+			CreateTimer(0.2, TimeBeforeRemoval, i);
+		}
+		if (GetEventInt(event, "winning_team") == FF2_GetBossTeam())
+			BlitzIsWinner = true;
+		else
+			BlitzIsWinner = false;
+		CreateTimer(5.0, RoundResultSound, TIMER_FLAG_NO_MAPCHANGE);
 	}
-	weapondifficulty=0;
-	allowrevive=0;
-	barrage=false;
-	blitzisboss=false;
+}
+
+public Action:RoundResultSound(Handle:hTimer, any:userid)
+{
+	new String:BlitzRoundResult[PLATFORM_MAX_PATH];
+	if (BlitzIsWinner)
+		strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsVictorious[GetRandomInt(0, sizeof(BlitzIsVictorious)-1)]);
+	else
+		strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsDefeated[GetRandomInt(0, sizeof(BlitzIsDefeated)-1)]);	
+	for(new i = 1; i <= MaxClients; i++ )
+	{
+		if(IsClientInGame(i) && IsClientConnected(i) && GetClientTeam(i) != FF2_GetBossTeam())
+		{
+			EmitSoundToClient(i, BlitzRoundResult);	
+		}
+	}
+	BlitzIsWinner = false;
 }
 
 public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
@@ -1793,7 +2277,9 @@ public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
 	if(FF2_HasAbility(userid, this_plugin_name, "blitzkrieg_config"))
 	{
 		new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
-		FF2_SetBossCharge(Boss, 0, 25.0);
+		new Float:bRage = FF2_GetBossCharge(Boss,0);
+		if(bRage<100)
+			FF2_SetBossCharge(Boss, 0, bRage+25.0);
 		Teleport_Me(Boss);
 		TF2_StunPlayer(Boss, 4.0, 0.0, TF_STUNFLAGS_LOSERSTATE, Boss);
 	}
@@ -1802,7 +2288,7 @@ public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
 
 public Action:ItzBlitzkriegTime(Handle:hTimer,any:index)
 {
-	if(combatstyle!=0)
+	if(combatstyle)
 	{
 		new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 		TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);

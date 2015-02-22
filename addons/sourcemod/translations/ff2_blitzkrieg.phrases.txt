@@ -1,0 +1,69 @@
+"Phrases"
+{
+	"good_luck"
+	{
+		"en"	"{olive}[FF2]{default} Good Luck!"
+	}
+	"combatmode_nomelee"
+	{
+		"en"	"You must rely on your rockets to finish enemies off!"
+	}
+	"combatmode_withmelee"
+	{
+		"en"	"Use your melee weapon to finish off nearby enemies!"
+	}
+	"blitz_inactive"
+	{
+		"en"	"Please wait until round has started to check difficulty!"
+	}
+	"blitz_inactive2"
+	{
+		"en"	"{olive}[FF2]{default} Please wait until round has started to check diffculty!"
+	}
+	"blitz_difficulty"
+	{
+		"#format" "{1:s},{2:s}"
+		"en"    "{1}'s Difficulty: {2}"
+	}
+	"blitz_difficulty2"
+	{
+		"#format" "{1:s},{2:s}"
+		"en"    "{olive}[FF2]{default} {red}{1}'s{default} Difficulty: {green}{2}"
+	}
+	"help_scout"
+	{
+		"en"	"All weapons are critboosted.\nSandman & Wrap Assassin given faster recharge rate & 5 ammo."
+	}
+	"help_soldier"
+	{
+		"en"	"All Rocket launchers have faster firerates, clip sizes and maxammo.\nPanic Attack gives speed boost while active\nAll banners give +50 HP & 150% longer duration."
+	}
+	"help_pyro"
+	{
+		"en"	"All flare guns are replaced by a Mighty Detonator.\nPanic Attack gives speed boost while active."
+	}
+	"help_demo"
+	{
+		"en"	"Grenade launchers have faster firerates, clip sizes and maxammo.\nLoch-n-Load deals +75% damage on-hit"
+	}
+	"help_heavy"
+	{
+		"en"	"All miniguns given knockback RAGE\nUse +attack3 to activate knockback RAGE\nPanic Attack gives speed boost while active.\nSandvich is given faster recharge rate."
+	}
+	"help_engy"
+	{
+		"en"	"Panic Attack given speed boost while active.\nDispenser range increased by 250%\nTeleporters are Bi-directional."
+	}
+	"help_medic"
+	{
+		"en"	"Medigun equipped with projectile shield.\nUse +attack3 to deploy projectile shield.\nGain energy by healing team-mates\nPlayers drop a revive marker on-death. Revive them as many times as you can."
+	}
+	"help_sniper"
+	{
+		"en"	"Same as default weaponset."
+	}
+	"help_spy"
+	{
+		"en"	"All weapons are critboosted.\nTry scoring backstabs while backstabbing opportunities exist."
+	}
+}
