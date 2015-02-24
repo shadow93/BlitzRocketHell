@@ -1848,25 +1848,17 @@ public bool:IsValidMarker(marker)
 public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcast) 
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	new boss = FF2_GetBossIndex(client);
-	if (boss != -1)
+	CreateTimer(0.1, CheckIndex, client); // I know, it's a weird way to do this, but it is what it is.
+	if(blitzisboss)
 	{
-		CreateTimer(0.2, CheckIndex, client); // I know, it's a weird way to do this, but it is what it is.
-		if(blitzisboss)
-		{
-			RemoveReanimator(client);
-		}
+		RemoveReanimator(client);
 	}
 	return Plugin_Continue;
 }
 
 public Action:CheckIndex(Handle:hTimer, any:client) // Checking Index
 {
-	new boss = FF2_GetBossIndex(client);
-	if (boss != -1)
-	{
-		CreateTimer(0.2, CheckAbility, client);
-	}
+	CreateTimer(0.1, CheckAbility, client);
 }
 
 public Action:CheckAbility(Handle:hTimer, any: client) // Now we actually check for abilities
@@ -2138,11 +2130,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
 					if(customweapons)
 					{
-						for(new i = 1; i <= MaxClients; i++ )
-						{
-							if(IsValidClient(i) && GetClientTeam(i) != FF2_GetBossTeam())
-								TF2_RegeneratePlayer(i);
-						}
+						CreateTimer(0.1, PostSetup);
 					}
 				}
 			
@@ -2186,6 +2174,23 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				{
 					CreateTimer(6.0, WhatWereYouThinking);
 				}
+			}
+		}
+	}
+}
+
+public Action:PostSetup(Handle:hTimer, any:userid)
+{
+	// Apparently this is still needed.
+	for(new client = 1; client <= MaxClients; client++ )
+	{
+		if(blitzisboss && customweapons)
+		{
+			if(IsClientInGame(client) && IsPlayerAlive(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+			{		
+				TF2_RegeneratePlayer(client);
+				if(!IsFakeClient(client))
+					PlayerHelpPanel(client);
 			}
 		}
 	}
