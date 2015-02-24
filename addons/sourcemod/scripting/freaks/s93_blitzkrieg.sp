@@ -1847,7 +1847,7 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 		return Plugin_Handled;
 	if (boss != -1)
 	{
-		CreateTimer(0.1, CheckAbility, client);
+		CreateTimer(0.2, CheckAbility, client);
 		if(blitzisboss)
 		{
 			RemoveReanimator(client);
@@ -1860,43 +1860,14 @@ public Action:CheckAbility(Handle:hTimer, any: client)
 {
 	new boss=GetClientOfUserId(FF2_GetBossUserId(client));
 	new b0ss=FF2_GetBossIndex(client);
-	new String: bossname[768];
-	FF2_GetBossSpecial(boss, bossname, sizeof(bossname));
-	CPrintToChatAll("{olive}[FF2] {blue}%s", bossname);
 	if(FF2_HasAbility(b0ss, this_plugin_name, "blitzkrieg_config"))
 	{
 		blitzisboss = true;
 		bRdm = false;
 		barrage = false;
-		
-		// Weapon Difficulty
-		weapondifficulty=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 1, 2);
-		if(!weapondifficulty)
-		{
-			bRdm = true;
-			minlvl=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 10, 2); // Minimum level to roll on random mode
-			maxlvl=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 11, 5); // Max level to roll on random mode
-			weapondifficulty=GetRandomInt(minlvl,maxlvl);
-		}
-		
-		// Weapon Stuff
-		combatstyle=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 2);
-		miniblitzkriegrage=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 5, 180); // RAGE/Weaponswitch Ammo
-		blitzkriegrage=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 6, 360); // Blitzkrieg Rampage Ammo
-		startmode=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
-		switch(combatstyle)
-		{
-			case 1:
-			{
-				PrintHintText(boss, "%t", "combatmode_nomelee");
-				PlotTwist(boss);
-			}
-			case 0:
-			{
-				PrintHintText(boss, "%t", "combatmode_withmelee");
-				PlotTwist(boss);
-			}
-		}
+
+		// Intro BGM
+		EmitSoundToAll(BLITZROUNDSTART);
 		
 		// Custom Weapons
 		customweapons=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
@@ -1904,22 +1875,13 @@ public Action:CheckAbility(Handle:hTimer, any: client)
 		{
 			for(new i = 1; i <= MaxClients; i++ )
 			{
-				TF2_RegeneratePlayer(i);
+				if(IsValidClient(i) && GetClientTeam(i) != FF2_GetBossTeam())
+					TF2_RegeneratePlayer(i);
 			}
 		}
 		
-		// Misc
-		voicelines=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
-		allowrevive=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
-		decaytime=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
-		lvlup=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
-			
-		// Intro BGM
-		EmitSoundToAll(BLITZROUNDSTART);
 	}
 }
-
-
 
 public Action:OnPlayerInventory(Handle:event, const String:name[], bool:dontBroadcast)
 {
@@ -2149,6 +2111,63 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		{
 			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
 			{	
+				// Double Checking
+				if(!blitzisboss || bRdm || barrage)
+				{
+					blitzisboss = true;
+					bRdm = false;
+					barrage = false;
+				}
+			
+				// Custom Weapon Handler System
+				if(!customweapons)
+				{
+					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+					if(customweapons)
+					{
+						for(new i = 1; i <= MaxClients; i++ )
+						{
+							if(IsValidClient(i) && GetClientTeam(i) != FF2_GetBossTeam())
+								TF2_RegeneratePlayer(i);
+						}
+					}
+				}
+			
+				// Weapon Difficulty
+				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
+				if(!weapondifficulty)
+				{
+					bRdm = true;
+					minlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 10, 2); // Minimum level to roll on random mode
+					maxlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 11, 5); // Max level to roll on random mode
+					weapondifficulty=GetRandomInt(minlvl,maxlvl);
+				}
+				
+				// Weapon Stuff
+				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5, 180); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6, 360); // Blitzkrieg Rampage Ammo
+				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				switch(combatstyle)
+				{
+					case 1:
+					{
+						PrintHintText(dBoss, "%t", "combatmode_nomelee");
+						PlotTwist(dBoss);
+					}
+					case 0:
+					{
+						PrintHintText(dBoss, "%t", "combatmode_withmelee");
+						PlotTwist(dBoss);
+					}
+				}
+
+				// Misc
+				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
+				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
+				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
+				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
+		
 				DisplayCurrentDifficulty(dBoss);
 				if(lvlup)
 				{
