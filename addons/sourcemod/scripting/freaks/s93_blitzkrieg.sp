@@ -84,59 +84,81 @@
 #include <freak_fortress_2>
 #include <freak_fortress_2_subplugin>
 #include <morecolors>
-#define MB 3
-#define ME 2048
 #undef REQUIRE_PLUGIN
 #tryinclude <updater>
 
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
-
-#define SWITCHMEDA	"vo/medic_mvm_resurrect01.wav"
-#define SWITCHSOLA	"vo/soldier_mvm_resurrect03.wav"
-#define SWITCHMEDB	"vo/medic_mvm_resurrect02.wav"
-#define SWITCHSOLB	"vo/soldier_mvm_resurrect05.wav"
-#define SWITCHMEDC	"vo/medic_mvm_resurrect03.wav"
-#define SWITCHSOLC	"vo/soldier_mvm_resurrect06.wav"
-
-#define MEDICRAGEA	"vo/medic_mvm_heal_shield02.wav"
-#define MEDICRAGEB	"vo/medic_positivevocalization05.wav"
-#define MEDICRAGEC	"vo/taunts/medic_taunts08.wav"
-
-#define SOLDIERRAGEA	"vo/taunts/soldier_taunts16.wav"
-#define SOLDIERRAGEB	"vo/taunts/soldier_taunts05.wav"
-#define SOLDIERRAGEC	"vo/taunts/soldier_taunts21.wav"
-
 #define OVER_9000	"saxton_hale/9000.wav"
-
-#define SCOUT_R1 "vo/Scout_sf13_magic_reac03.wav"
-#define SCOUT_R2 "vo/Scout_sf13_magic_reac07.wav"
-#define SOLLY_R1 "vo/Soldier_sf13_magic_reac03.wav"
-#define PYRO_R1 "vo/Pyro_autodejectedtie01.wav"
-#define DEMO_R1	"vo/Demoman_sf13_magic_reac05.wav"
-#define HEAVY_R1 "vo/Heavy_sf13_magic_reac01.wav"
-#define HEAVY_R2 "vo/Heavy_sf13_magic_reac03.wav"
-#define ENGY_R1 "vo/Engineer_sf13_magic_reac01.wav"
-#define ENGY_R2 "vo/Engineer_sf13_magic_reac02.wav"
-#define MEDIC_R1 "vo/Medic_sf13_magic_reac01.wav"
-#define MEDIC_R2 "vo/Medic_sf13_magic_reac02.wav"
-#define MEDIC_R3 "vo/Medic_sf13_magic_reac03.wav"
-#define MEDIC_R4 "vo/Medic_sf13_magic_reac04.wav"
-#define MEDIC_R5 "vo/Medic_sf13_magic_reac07.wav"
-#define SNIPER_R1 "vo/Sniper_sf13_magic_reac01.wav"
-#define SNIPER_R2 "vo/Sniper_sf13_magic_reac02.wav"
-#define SNIPER_R3 "vo/Sniper_sf13_magic_reac04.wav"
-#define SPY_R1 "vo/Spy_sf13_magic_reac01.wav"
-#define SPY_R2 "vo/Spy_sf13_magic_reac02.wav"
-#define SPY_R3 "vo/Spy_sf13_magic_reac03.wav"
-#define SPY_R4 "vo/Spy_sf13_magic_reac04.wav"
-#define SPY_R5 "vo/Spy_sf13_magic_reac05.wav"
-#define SPY_R6 "vo/Spy_sf13_magic_reac06.wav"
-
 #define BLITZROUNDSTART "freak_fortress_2/s93dm/eog_intro.mp3"
 #define BLITZROUNDEND	"freak_fortress_2/s93dm/eog_outtro.mp3"
 
-// Manning up
+// Version Number
+#define MAJOR_REVISION "2"
+#define MINOR_REVISION "2"
+#define DEV_REVISION "Beta"
+#define BUILD_REVISION "(Experimental)"
+#define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
+
+#if defined _updater_included
+#define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
+#endif
+
+//Handles
+new Handle: crockethell;
+
+//Other Stuff
+new customweapons;
+new combatstyle;
+new weapondifficulty;
+new voicelines;
+new dBoss;
+new blitzkriegrage;
+new miniblitzkriegrage;
+new startmode;
+new minlvl;
+new maxlvl;
+new lvlup;
+new bool:bRdm = false;
+new bool:barrage = false;
+new bool:blitzisboss = false;
+new bool:BlitzIsWinner = false;
+
+// Reanimators
+new allowrevive;
+new decaytime;
+new reviveMarker[MAXPLAYERS+1];
+new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
+new currentTeam[MAXPLAYERS+1] = {0, ... };
+new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
+
+// Blitz in Medic mode
+static const String:BlitzMedic[][] = {
+	"vo/medic_mvm_resurrect01.wav",
+	"vo/medic_mvm_resurrect02.wav",
+	"vo/medic_mvm_resurrect03.wav"
+};
+
+static const String:BlitzMedicRage[][] = {
+	"vo/medic_mvm_heal_shield02.wav",
+	"vo/medic_positivevocalization05.wav",
+	"vo/taunts/medic_taunts08.wav"
+};
+
+// Blitz in Soldier mode
+static const String:BlitzSoldier[][] = {
+	"vo/soldier_mvm_resurrect03.wav",
+	"vo/soldier_mvm_resurrect05.wav",
+	"vo/soldier_mvm_resurrect06.wav"
+};
+
+static const String:BlitzSoldierRage[][] = {
+	"vo/taunts/soldier_taunts16.wav",
+	"vo/taunts/soldier_taunts05.wav",
+	"vo/taunts/soldier_taunts21.wav"
+};
+
+// Level Up Enabled Indicator
 static const String:BlitzCanLvlUp[][] = {
 	"vo/mvm_mann_up_mode01.wav",
 	"vo/mvm_mann_up_mode02.wav",
@@ -155,6 +177,7 @@ static const String:BlitzCanLvlUp[][] = {
 	"vo/mvm_mann_up_mode15.wav"
 };
 
+// Round Result
 static const String:BlitzIsDefeated[][] = {
 	"vo/mvm_manned_up01.wav",
 	"vo/mvm_manned_up02.wav",
@@ -175,44 +198,72 @@ static const String:BlitzIsVictorious[][] = {
 	"vo/mvm_game_over_loss11.wav"
 };
 
-//Handles
-new Handle: crockethell;
-//Other Stuff
-new customweapons;
-new combatstyle;
-new weapondifficulty;
-new voicelines;
-new dBoss;
-new blitzkriegrage;
-new miniblitzkriegrage;
-new startmode;
-new minlvl;
-new maxlvl;
-new lvlup;
-new bool:bRdm = false;
-new bool:barrage = false;
-new bool:blitzisboss = false;
-new bool:BlitzIsWinner = false;
+// Class Reaction Lines
+static const String:ScoutReact[][] = {
+	"vo/scout_sf13_magic_reac03.wav",
+	"vo/scout_sf13_magic_reac07.wav",
+	"vo/scout_sf12_badmagic04.wav"
+};
 
-// Reanimators
+static const String:SoldierReact[][] = {
+	"vo/soldier_sf13_magic_reac03.wav",
+	"vo/soldier_sf12_badmagic07.wav",
+	"vo/soldier_sf12_badmagic13.wav"
+};
 
-new allowrevive;
-new decaytime;
-new reviveMarker[MAXPLAYERS+1];
-new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
-new currentTeam[MAXPLAYERS+1] = {0, ... };
-new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
+static const String:PyroReact[][] = {
+	"vo/pyro_autodejectedtie01.wav",
+	"vo/pyro_painsevere02.wav",
+	"vo/pyro_painsevere04.wav"
+};
 
-// Version Number
-#define MAJOR_REVISION "2"
-#define MINOR_REVISION "2"
-#define DEV_REVISION "Beta"
-#define BUILD_REVISION "(Experimental)"
-#define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
+static const String:DemoReact[][] = {
+	"vo/demoman_sf13_magic_reac05.wav",
+	"vo/demoman_sf13_bosses02.wav",
+	"vo/demoman_sf13_bosses03.wav",
+	"vo/demoman_sf13_bosses04.wav",
+	"vo/demoman_sf13_bosses05.wav",
+	"vo/demoman_sf13_bosses06.wav"
+};
 
-#if defined _updater_included
-#define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
-#endif
+static const String:HeavyReact[][] = {
+	"vo/heavy_sf13_magic_reac01.wav",
+	"vo/heavy_sf13_magic_reac03.wav",
+	"vo/heavy_cartgoingbackoffense02.wav",
+	"vo/heavy_negativevocalization02.wav",
+	"vo/heavy_negativevocalization06.wav"
+};
+
+static const String:EngyReact[][] = {
+	"vo/engineer_sf13_magic_reac01.wav",
+	"vo/engineer_sf13_magic_reac02.wav",
+	"vo/engineer_specialcompleted04.wav",
+	"vo/engineer_painsevere05.wav",
+	"vo/engineer_negativevocalization12.wav"
+};
+
+static const String:MedicReact[][] = {
+	"vo/medic_sf13_magic_reac01.wav",
+	"vo/medic_sf13_magic_reac02.wav",
+	"vo/medic_sf13_magic_reac03.wav",
+	"vo/medic_sf13_magic_reac04.wav",
+	"vo/medic_sf13_magic_reac07.wav"
+};
+
+static const String:SniperReact[][] = {
+	"vo/sniper_sf13_magic_reac01.wav",
+	"vo/sniper_sf13_magic_reac02.wav",
+	"vo/sniper_sf13_magic_reac04.wav"
+};
+
+static const String:SpyReact[][] = {
+	"vo/Spy_sf13_magic_reac01.wav",
+	"vo/Spy_sf13_magic_reac02.wav",
+	"vo/Spy_sf13_magic_reac03.wav",
+	"vo/Spy_sf13_magic_reac04.wav",
+	"vo/Spy_sf13_magic_reac05.wav",
+	"vo/Spy_sf13_magic_reac06.wav"
+};
 
 public OnMapStart()
 {
@@ -224,44 +275,61 @@ public OnMapStart()
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
 	//When Blitzkrieg returns to his normal medic self
-	PrecacheSound(SWITCHMEDA,true);
-	PrecacheSound(SWITCHMEDB,true);
-	PrecacheSound(SWITCHMEDC,true);
-	PrecacheSound(MEDICRAGEA,true);
-	PrecacheSound(MEDICRAGEB,true);
-	PrecacheSound(MEDICRAGEC,true);
+	for (new i = 0; i < sizeof(BlitzMedic); i++)
+	{
+		PrecacheSound(BlitzMedic[i], true);
+	}
+	for (new i = 0; i < sizeof(BlitzMedicRage); i++)
+	{
+		PrecacheSound(BlitzMedicRage[i], true);
+	}
 	//When the fallen Soldier's soul takes over
-	PrecacheSound(SWITCHSOLA,true);
-	PrecacheSound(SWITCHSOLB,true);
-	PrecacheSound(SWITCHSOLC,true);
-	PrecacheSound(SOLDIERRAGEA,true);
-	PrecacheSound(SOLDIERRAGEB,true);
-	PrecacheSound(SOLDIERRAGEC,true);
+	for (new i = 0; i < sizeof(BlitzSoldier); i++)
+	{
+		PrecacheSound(BlitzSoldier[i], true);
+	}
+	for (new i = 0; i < sizeof(BlitzSoldierRage); i++)
+	{
+		PrecacheSound(BlitzSoldierRage[i], true);
+	}
 	//Class Voice Reaction Lines
-	PrecacheSound(SCOUT_R1,true);
-	PrecacheSound(SCOUT_R2,true);
-	PrecacheSound(SOLLY_R1,true);
-	PrecacheSound(PYRO_R1,true);
-	PrecacheSound(DEMO_R1,true);
-	PrecacheSound(HEAVY_R1,true);
-	PrecacheSound(HEAVY_R2,true);
-	PrecacheSound(ENGY_R1,true);
-	PrecacheSound(ENGY_R2,true);
-	PrecacheSound(MEDIC_R1,true);
-	PrecacheSound(MEDIC_R2,true);
-	PrecacheSound(MEDIC_R3,true);
-	PrecacheSound(MEDIC_R4,true);
-	PrecacheSound(MEDIC_R5,true);
-	PrecacheSound(SNIPER_R1,true);
-	PrecacheSound(SNIPER_R2,true);
-	PrecacheSound(SNIPER_R3,true);
-	PrecacheSound(SPY_R1,true);
-	PrecacheSound(SPY_R2,true);	
-	PrecacheSound(SPY_R3,true);
-	PrecacheSound(SPY_R4,true);
-	PrecacheSound(SPY_R5,true);
-	PrecacheSound(SPY_R6,true);
-	LoadTranslations("ff2_blitzkrieg.phrases");
+	for (new i = 0; i < sizeof(ScoutReact); i++)
+	{
+		PrecacheSound(ScoutReact[i], true);
+	}
+	for (new i = 0; i < sizeof(SoldierReact); i++)
+	{
+		PrecacheSound(SoldierReact[i], true);
+	}
+	for (new i = 0; i < sizeof(PyroReact); i++)
+	{
+		PrecacheSound(PyroReact[i], true);
+	}
+	for (new i = 0; i < sizeof(DemoReact); i++)
+	{
+		PrecacheSound(DemoReact[i], true);
+	}
+	for (new i = 0; i < sizeof(HeavyReact); i++)
+	{
+		PrecacheSound(HeavyReact[i], true);
+	}
+	for (new i = 0; i < sizeof(EngyReact); i++)
+	{
+		PrecacheSound(EngyReact[i], true);
+	}
+	for (new i = 0; i < sizeof(MedicReact); i++)
+	{
+		PrecacheSound(MedicReact[i], true);
+	}
+	for (new i = 0; i < sizeof(SniperReact); i++)
+	{
+		PrecacheSound(SniperReact[i], true);
+	}
+	for (new i = 0; i < sizeof(SpyReact); i++)
+	{
+		PrecacheSound(SpyReact[i], true);
+	}
+	// Manning Up & Round Result Lines
 	for (new i = 0; i < sizeof(BlitzCanLvlUp); i++)
 	{
 		PrecacheSound(BlitzCanLvlUp[i], true);
@@ -274,6 +342,8 @@ public OnMapStart()
 	{
 		PrecacheSound(BlitzIsVictorious[i], true);
 	}
+	// Translations File
+	LoadTranslations("ff2_blitzkrieg.phrases");
 }
 
 
@@ -412,33 +482,19 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 			TF2_AddCondition(Boss,TFCond_Kritzkrieged,FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,1,5.0)); // Kritzkrieg
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
 			//RAGE Voice lines depending on Blitzkrieg's current player class (Blitzkrieg is two classes in 1 - Medic / Soldier soul in the same body)
+			new String:IsRaging[PLATFORM_MAX_PATH];
 			switch(TF2_GetPlayerClass(Boss))
 			{
 				case TFClass_Medic: // Medic
 				{
-					switch (GetRandomInt(0,2))	
-					{
-						case 0:
-							EmitSoundToAll(MEDICRAGEA, Boss);
-						case 1:
-							EmitSoundToAll(MEDICRAGEB, Boss);
-						case 2:
-							EmitSoundToAll(MEDICRAGEC, Boss);
-					}
+					strcopy(IsRaging, PLATFORM_MAX_PATH, BlitzMedicRage[GetRandomInt(0, sizeof(BlitzMedicRage)-1)]);	
 				}
 				case TFClass_Soldier: // Soldier
 				{
-					switch (GetRandomInt(0,2))	
-					{
-						case 0:
-							EmitSoundToAll(SOLDIERRAGEA, Boss);
-						case 1:
-							EmitSoundToAll(SOLDIERRAGEB, Boss);
-						case 2:
-							EmitSoundToAll(SOLDIERRAGEC, Boss);
-					}				
+					strcopy(IsRaging, PLATFORM_MAX_PATH, BlitzSoldierRage[GetRandomInt(0, sizeof(BlitzSoldierRage)-1)]);	
 				}
 			}
+			EmitSoundToAll(IsRaging, Boss);	
 			// Weapon switch depending if Blitzkrieg Barrage is active or not
 			if(barrage)
 				BlitzkriegBarrage(Boss);
@@ -472,89 +528,53 @@ ClassResponses(client)
 {
 	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 	{
+		new String:Reaction[PLATFORM_MAX_PATH];
 		switch(TF2_GetPlayerClass(client))
 		{
 			case TFClass_Scout: // Scout
 			{
-				switch (GetRandomInt(0,1))
-				{
-					case 0:
-						EmitSoundToAll(SCOUT_R1,client);
-					case 1:
-						EmitSoundToAll(SCOUT_R2,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, ScoutReact[GetRandomInt(0, sizeof(ScoutReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}
 			case TFClass_Soldier: // Soldier
-				EmitSoundToAll(SOLLY_R1,client);
+			{
+				strcopy(Reaction, PLATFORM_MAX_PATH, SoldierReact[GetRandomInt(0, sizeof(SoldierReact)-1)]);
+				EmitSoundToAll(Reaction, client);
+			}
 			case TFClass_Pyro: // Pyro
-				EmitSoundToAll(PYRO_R1,client);
+			{
+				strcopy(Reaction, PLATFORM_MAX_PATH, PyroReact[GetRandomInt(0, sizeof(PyroReact)-1)]);
+				EmitSoundToAll(Reaction, client);
+			}
 			case TFClass_DemoMan: // DemoMan
-				EmitSoundToAll(DEMO_R1,client);
+			{
+				strcopy(Reaction, PLATFORM_MAX_PATH, DemoReact[GetRandomInt(0, sizeof(DemoReact)-1)]);
+				EmitSoundToAll(Reaction, client);
+			}
 			case TFClass_Heavy: // Heavy
 			{
-				switch (GetRandomInt(0,1))
-				{
-					case 0:
-						EmitSoundToAll(HEAVY_R1,client);
-					case 1:	
-						EmitSoundToAll(HEAVY_R2,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, HeavyReact[GetRandomInt(0, sizeof(HeavyReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}
 			case TFClass_Engineer: // Engineer
 			{
-				switch (GetRandomInt(0,1))
-				{
-					case 0:
-						EmitSoundToAll(ENGY_R1,client);
-					case 1:
-						EmitSoundToAll(ENGY_R2,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, EngyReact[GetRandomInt(0, sizeof(EngyReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}	
 			case TFClass_Medic: // Medic
 			{
-				switch (GetRandomInt(0,4))
-				{
-					case 0:
-						EmitSoundToAll(MEDIC_R1,client);
-					case 1:
-						EmitSoundToAll(MEDIC_R2,client);
-					case 2:
-						EmitSoundToAll(MEDIC_R3,client);
-					case 3:
-						EmitSoundToAll(MEDIC_R4,client);
-					case 4:
-						EmitSoundToAll(MEDIC_R5,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, MedicReact[GetRandomInt(0, sizeof(MedicReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}
 			case TFClass_Sniper: // Sniper
 			{
-				switch (GetRandomInt(0,2))
-				{
-					case 0:
-						EmitSoundToAll(SNIPER_R1,client);
-					case 1:
-						EmitSoundToAll(SNIPER_R2,client);
-					case 2:
-						EmitSoundToAll(SNIPER_R3,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, SniperReact[GetRandomInt(0, sizeof(SniperReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}
 			case TFClass_Spy: // Spy
 			{
-				switch (GetRandomInt(0,4))
-				{
-					case 0:
-						EmitSoundToAll(SPY_R1,client);
-					case 1:
-						EmitSoundToAll(SPY_R2,client);
-					case 2:
-						EmitSoundToAll(SPY_R3,client);
-					case 3:
-						EmitSoundToAll(SPY_R4,client);
-					case 4:
-						EmitSoundToAll(SPY_R5,client);
-					case 5:
-						EmitSoundToAll(SPY_R6,client);
-				}
+				strcopy(Reaction, PLATFORM_MAX_PATH, SpyReact[GetRandomInt(0, sizeof(SpyReact)-1)]);
+				EmitSoundToAll(Reaction, client);
 			}
 		}
 	}
@@ -565,35 +585,21 @@ PlotTwist(client)
 {
 	if(barrage)
 	{
+		new String:StillAlive[PLATFORM_MAX_PATH];
 		switch(TF2_GetPlayerClass(client))
 		{
 			case TFClass_Medic: // Medic
 			{
 				TF2_SetPlayerClass(client, TFClass_Soldier);
-				switch (GetRandomInt(0,2))	
-				{
-					case 0:
-						EmitSoundToAll(SWITCHSOLA);
-					case 1:
-						EmitSoundToAll(SWITCHSOLB);
-					case 2:
-						EmitSoundToAll(SWITCHSOLC);
-				}
+				strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzSoldier[GetRandomInt(0, sizeof(BlitzSoldier)-1)]);
 			}
 			case TFClass_Soldier: // Soldier
 			{
 				TF2_SetPlayerClass(client, TFClass_Medic);
-				switch (GetRandomInt(0,2))	
-				{
-					case 0:
-						EmitSoundToAll(SWITCHMEDA);
-					case 1:
-						EmitSoundToAll(SWITCHMEDB);
-					case 2:
-						EmitSoundToAll(SWITCHMEDC);
-				}				
+				strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzMedic[GetRandomInt(0, sizeof(BlitzMedic)-1)]);		
 			}
 		}
+		EmitSoundToAll(StillAlive);	
 	}
 	else
 	{
