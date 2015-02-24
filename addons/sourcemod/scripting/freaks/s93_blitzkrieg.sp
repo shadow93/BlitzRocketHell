@@ -1621,7 +1621,7 @@ CheckWeapons(client)
 			case 44:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, "tf_weapon_bat_wood", 44, 5, 10, "38 ; 1 ; 125 ; -15 ; 249 ; 1.5 ; 279 ; 5");
+				SpawnWeapon(client, "tf_weapon_bat_wood", 44, 5, 10, "38 ; 1 ; 125 ; -15 ; 249 ; 1.5 ; 279 ; 5.0");
 				CPrintToChat(client, "Sandman:");	
 				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
 				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
@@ -1633,7 +1633,7 @@ CheckWeapons(client)
 			case 648:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, "tf_weapon_bat_giftwrap", 648, 5, 10, "1 , 0.3 ; 346 ; 1 ; 249 ; 1.5 ; 279 ; 5");
+				SpawnWeapon(client, "tf_weapon_bat_giftwrap", 648, 5, 10, "1 , 0.3 ; 346 ; 1 ; 249 ; 1.5 ; 279 ; 5.0");
 				CPrintToChat(client, "Wrap Assassin:");	
 				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
 				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
@@ -1843,11 +1843,9 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
 	new boss = FF2_GetBossIndex(client);
-	if (client < 1 || !IsValidEdict(client)) 
-		return Plugin_Handled;
 	if (boss != -1)
 	{
-		CreateTimer(0.2, CheckAbility, client);
+		CreateTimer(0.2, CheckIndex, client); // I know, it's a weird way to do this, but it is what it is.
 		if(blitzisboss)
 		{
 			RemoveReanimator(client);
@@ -1856,7 +1854,16 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 	return Plugin_Continue;
 }
 
-public Action:CheckAbility(Handle:hTimer, any: client)
+public Action:CheckIndex(Handle:hTimer, any:client) // Checking Index
+{
+	new boss = FF2_GetBossIndex(client);
+	if (boss != -1)
+	{
+		CreateTimer(0.2, CheckAbility, client);
+	}
+}
+
+public Action:CheckAbility(Handle:hTimer, any: client) // Now we actually check for abilities
 {
 	new boss=GetClientOfUserId(FF2_GetBossUserId(client));
 	new b0ss=FF2_GetBossIndex(client);
