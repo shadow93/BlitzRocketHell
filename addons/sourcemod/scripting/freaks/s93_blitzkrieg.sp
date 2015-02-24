@@ -2272,10 +2272,6 @@ public Action:ResetBools(Handle:hTimer, any:userid)
 		barrage = false;
 		bRdm = false;
 		blitzisboss = false;
-		if(!blitzisboss)
-			CPrintToChatAll("{blue}Blitzisboss = {red}false");
-		else
-			CPrintToChatAll("{blue}Blitzisboss = {green}true");
 		CreateTimer(0.2, TimeBeforeRemoval, client);
 	}
 }
