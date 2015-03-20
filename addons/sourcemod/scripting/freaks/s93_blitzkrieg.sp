@@ -4,7 +4,7 @@
 	
 	The Blitzkrieg - The original Rocket Hell FF2 Boss
 	
-	Some code snippets from EP, MasterOfTheXP, pheadxdll, & Wolvan
+	Some code snippets from EP, MasterOfTheXP, pheadxdll, asherkin, & Wolvan
 	Special thanks to BBG_Theory, M76030, Ravensbro, Transit of Venus, and VoiDED for pointing out bugs
 	
 	How to configure his rounds:
@@ -46,8 +46,9 @@
 				0 - Start with only Melee
 				
 			arg8 - Allow Medics to revive players
-				1 - Enable revive markers
+				1 and higher - Allow revive markers with a drop limit
 				0 - Disable revive markers
+				-1 - Allow revive markers (unlimited revives)
 				
 			arg9 - Revive Marker Duration (default 30 seconds)
 			
@@ -60,7 +61,12 @@
 				1 - Reroll
 				0 - Retain same level
 				
-			arg13 - RAGE on Kill? (default is no RAGE on kill)
+			arg13 - RAGE on Kill? (default is no RAGE on kill, any value is percentage (float) added)
+			
+			arg14 - Enable Boss Rocket Bounce?
+				-1 - Random Amount
+				0 - Disabled
+				>0 - Bounce for X times
 		
 		mini_blitzkrieg
 			arg0 - Ability Slot
@@ -86,6 +92,7 @@
 #include <morecolors>
 #undef REQUIRE_PLUGIN
 #tryinclude <updater>
+#tryinclude <revivemarkers>
 
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
@@ -95,14 +102,12 @@
 
 // Version Number
 #define MAJOR_REVISION "2"
-#define MINOR_REVISION "2"
+#define MINOR_REVISION "3"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Experimental)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
 
-#if defined _updater_included
 #define UPDATE_URL "http://www.shadow93.info/tf2/tf2plugins/tf2danmaku/update.txt"
-#endif
 
 //Handles
 new Handle: crockethell;
@@ -132,137 +137,159 @@ new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
 new currentTeam[MAXPLAYERS+1] = {0, ... };
 new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
+// Integration Mode
+#if defined _revivemarkers_included
+new bool: IntegrationMode = false; // If Wolvan's revive markers plugin exist, to switch to those instead.
+new bool: SetVis4All = false;
+new bool: SetVis4Hale = false;
+new bool: UnRestrictRevives = false;
+new SetOtherTeam = 0;
+#endif
+
+/*
+	// Charge Stuff (for future use)
+	new Handle:jumpHUD, Handle:OnHaleJump = null;
+	new bEnableSuperDuperJump[MAXPLAYERS+1];
+*/
+
+// Bouncing Projectiles
+#define	MAX_EDICT_BITS	11
+#define	MAX_EDICTS		(1 << MAX_EDICT_BITS)
+new rBounce[MAX_EDICTS];
+new rMaxBounceCount[MAX_EDICTS];
+new rMaxBounces = 0;
+
 // Blitz in Medic mode
 static const String:BlitzMedic[][] = {
-	"vo/medic_mvm_resurrect01.wav",
-	"vo/medic_mvm_resurrect02.wav",
-	"vo/medic_mvm_resurrect03.wav"
+	"vo/medic_mvm_resurrect01.mp3",
+	"vo/medic_mvm_resurrect02.mp3",
+	"vo/medic_mvm_resurrect03.mp3"
 };
 
 static const String:BlitzMedicRage[][] = {
-	"vo/medic_mvm_heal_shield02.wav",
-	"vo/medic_positivevocalization05.wav",
-	"vo/taunts/medic_taunts08.wav"
+	"vo/medic_mvm_heal_shield02.mp3",
+	"vo/medic_positivevocalization05.mp3",
+	"vo/taunts/medic_taunts08.mp3"
 };
 
 // Blitz in Soldier mode
 static const String:BlitzSoldier[][] = {
-	"vo/soldier_mvm_resurrect03.wav",
-	"vo/soldier_mvm_resurrect05.wav",
-	"vo/soldier_mvm_resurrect06.wav"
+	"vo/soldier_mvm_resurrect03.mp3",
+	"vo/soldier_mvm_resurrect05.mp3",
+	"vo/soldier_mvm_resurrect06.mp3"
 };
 
 static const String:BlitzSoldierRage[][] = {
-	"vo/taunts/soldier_taunts16.wav",
-	"vo/taunts/soldier_taunts05.wav",
-	"vo/taunts/soldier_taunts21.wav"
+	"vo/taunts/soldier_taunts16.mp3",
+	"vo/taunts/soldier_taunts05.mp3",
+	"vo/taunts/soldier_taunts21.mp3"
 };
 
 // Level Up Enabled Indicator
 static const String:BlitzCanLvlUp[][] = {
-	"vo/mvm_mann_up_mode01.wav",
-	"vo/mvm_mann_up_mode02.wav",
-	"vo/mvm_mann_up_mode03.wav",
-	"vo/mvm_mann_up_mode04.wav",
-	"vo/mvm_mann_up_mode05.wav",
-	"vo/mvm_mann_up_mode06.wav",
-	"vo/mvm_mann_up_mode07.wav",
-	"vo/mvm_mann_up_mode08.wav",
-	"vo/mvm_mann_up_mode09.wav",
-	"vo/mvm_mann_up_mode10.wav",
-	"vo/mvm_mann_up_mode11.wav",
-	"vo/mvm_mann_up_mode12.wav",
-	"vo/mvm_mann_up_mode13.wav",
-	"vo/mvm_mann_up_mode14.wav",
-	"vo/mvm_mann_up_mode15.wav"
+	"vo/mvm_mann_up_mode01.mp3",
+	"vo/mvm_mann_up_mode02.mp3",
+	"vo/mvm_mann_up_mode03.mp3",
+	"vo/mvm_mann_up_mode04.mp3",
+	"vo/mvm_mann_up_mode05.mp3",
+	"vo/mvm_mann_up_mode06.mp3",
+	"vo/mvm_mann_up_mode07.mp3",
+	"vo/mvm_mann_up_mode08.mp3",
+	"vo/mvm_mann_up_mode09.mp3",
+	"vo/mvm_mann_up_mode10.mp3",
+	"vo/mvm_mann_up_mode11.mp3",
+	"vo/mvm_mann_up_mode12.mp3",
+	"vo/mvm_mann_up_mode13.mp3",
+	"vo/mvm_mann_up_mode14.mp3",
+	"vo/mvm_mann_up_mode15.mp3"
 };
 
 // Round Result
 static const String:BlitzIsDefeated[][] = {
-	"vo/mvm_manned_up01.wav",
-	"vo/mvm_manned_up02.wav",
-	"vo/mvm_manned_up03.wav"
+	"vo/mvm_manned_up01.mp3",
+	"vo/mvm_manned_up02.mp3",
+	"vo/mvm_manned_up03.mp3"
 };
 
 static const String:BlitzIsVictorious[][] = {
-	"vo/mvm_game_over_loss01.wav",
-	"vo/mvm_game_over_loss02.wav",
-	"vo/mvm_game_over_loss03.wav",
-	"vo/mvm_game_over_loss04.wav",
-	"vo/mvm_game_over_loss05.wav",
-	"vo/mvm_game_over_loss06.wav",
-	"vo/mvm_game_over_loss07.wav",
-	"vo/mvm_game_over_loss08.wav",
-	"vo/mvm_game_over_loss09.wav",
-	"vo/mvm_game_over_loss10.wav",
-	"vo/mvm_game_over_loss11.wav"
+	"vo/mvm_game_over_loss01.mp3",
+	"vo/mvm_game_over_loss02.mp3",
+	"vo/mvm_game_over_loss03.mp3",
+	"vo/mvm_game_over_loss04.mp3",
+	"vo/mvm_game_over_loss05.mp3",
+	"vo/mvm_game_over_loss06.mp3",
+	"vo/mvm_game_over_loss07.mp3",
+	"vo/mvm_game_over_loss08.mp3",
+	"vo/mvm_game_over_loss09.mp3",
+	"vo/mvm_game_over_loss10.mp3",
+	"vo/mvm_game_over_loss11.mp3"
 };
 
 // Class Reaction Lines
 static const String:ScoutReact[][] = {
-	"vo/scout_sf13_magic_reac03.wav",
-	"vo/scout_sf13_magic_reac07.wav",
-	"vo/scout_sf12_badmagic04.wav"
+	"vo/scout_sf13_magic_reac03.mp3",
+	"vo/scout_sf13_magic_reac07.mp3",
+	"vo/scout_sf12_badmagic04.mp3"
 };
 
 static const String:SoldierReact[][] = {
-	"vo/soldier_sf13_magic_reac03.wav",
-	"vo/soldier_sf12_badmagic07.wav",
-	"vo/soldier_sf12_badmagic13.wav"
+	"vo/soldier_sf13_magic_reac03.mp3",
+	"vo/soldier_sf12_badmagic07.mp3",
+	"vo/soldier_sf12_badmagic13.mp3"
 };
 
 static const String:PyroReact[][] = {
-	"vo/pyro_autodejectedtie01.wav",
-	"vo/pyro_painsevere02.wav",
-	"vo/pyro_painsevere04.wav"
+	"vo/pyro_autodejectedtie01.mp3",
+	"vo/pyro_painsevere02.mp3",
+	"vo/pyro_painsevere04.mp3"
 };
 
 static const String:DemoReact[][] = {
-	"vo/demoman_sf13_magic_reac05.wav",
-	"vo/demoman_sf13_bosses02.wav",
-	"vo/demoman_sf13_bosses03.wav",
-	"vo/demoman_sf13_bosses04.wav",
-	"vo/demoman_sf13_bosses05.wav",
-	"vo/demoman_sf13_bosses06.wav"
+	"vo/demoman_sf13_magic_reac05.mp3",
+	"vo/demoman_sf13_bosses02.mp3",
+	"vo/demoman_sf13_bosses03.mp3",
+	"vo/demoman_sf13_bosses04.mp3",
+	"vo/demoman_sf13_bosses05.mp3",
+	"vo/demoman_sf13_bosses06.mp3"
 };
 
 static const String:HeavyReact[][] = {
-	"vo/heavy_sf13_magic_reac01.wav",
-	"vo/heavy_sf13_magic_reac03.wav",
-	"vo/heavy_cartgoingbackoffense02.wav",
-	"vo/heavy_negativevocalization02.wav",
-	"vo/heavy_negativevocalization06.wav"
+	"vo/heavy_sf13_magic_reac01.mp3",
+	"vo/heavy_sf13_magic_reac03.mp3",
+	"vo/heavy_cartgoingbackoffense02.mp3",
+	"vo/heavy_negativevocalization02.mp3",
+	"vo/heavy_negativevocalization06.mp3"
 };
 
 static const String:EngyReact[][] = {
-	"vo/engineer_sf13_magic_reac01.wav",
-	"vo/engineer_sf13_magic_reac02.wav",
-	"vo/engineer_specialcompleted04.wav",
-	"vo/engineer_painsevere05.wav",
-	"vo/engineer_negativevocalization12.wav"
+	"vo/engineer_sf13_magic_reac01.mp3",
+	"vo/engineer_sf13_magic_reac02.mp3",
+	"vo/engineer_specialcompleted04.mp3",
+	"vo/engineer_painsevere05.mp3",
+	"vo/engineer_negativevocalization12.mp3"
 };
 
 static const String:MedicReact[][] = {
-	"vo/medic_sf13_magic_reac01.wav",
-	"vo/medic_sf13_magic_reac02.wav",
-	"vo/medic_sf13_magic_reac03.wav",
-	"vo/medic_sf13_magic_reac04.wav",
-	"vo/medic_sf13_magic_reac07.wav"
+	"vo/medic_sf13_magic_reac01.mp3",
+	"vo/medic_sf13_magic_reac02.mp3",
+	"vo/medic_sf13_magic_reac03.mp3",
+	"vo/medic_sf13_magic_reac04.mp3",
+	"vo/medic_sf13_magic_reac07.mp3"
 };
 
 static const String:SniperReact[][] = {
-	"vo/sniper_sf13_magic_reac01.wav",
-	"vo/sniper_sf13_magic_reac02.wav",
-	"vo/sniper_sf13_magic_reac04.wav"
+	"vo/sniper_sf13_magic_reac01.mp3",
+	"vo/sniper_sf13_magic_reac02.mp3",
+	"vo/sniper_sf13_magic_reac04.mp3"
 };
 
 static const String:SpyReact[][] = {
-	"vo/Spy_sf13_magic_reac01.wav",
-	"vo/Spy_sf13_magic_reac02.wav",
-	"vo/Spy_sf13_magic_reac03.wav",
-	"vo/Spy_sf13_magic_reac04.wav",
-	"vo/Spy_sf13_magic_reac05.wav",
-	"vo/Spy_sf13_magic_reac06.wav"
+	"vo/Spy_sf13_magic_reac01.mp3",
+	"vo/Spy_sf13_magic_reac02.mp3",
+	"vo/Spy_sf13_magic_reac03.mp3",
+	"vo/Spy_sf13_magic_reac04.mp3",
+	"vo/Spy_sf13_magic_reac05.mp3",
+	"vo/Spy_sf13_magic_reac06.mp3"
 };
 
 public OnMapStart()
@@ -373,21 +400,51 @@ public OnPluginStart2()
 	RegConsoleCmd("haleclassinfo",	BlitzHelp);
 	RegConsoleCmd("ff2help", BlitzHelp);
 	RegConsoleCmd("helpme",	BlitzHelp);
-	decl String:steamid[256];
+	
 	for (new i = 1; i <= MaxClients; i++) 
 	{
 		if (IsClientInGame(i)) 
 		{
 			currentTeam[i] = GetClientTeam(i);
 			ChangeClass[i] = false;
-			GetClientAuthString(i, steamid, sizeof(steamid));
 		}
 	}
+	
 	#if defined _updater_included
 	if (LibraryExists("updater"))
     {
 		Updater_AddPlugin(UPDATE_URL);
 	}
+	#endif 
+	
+	#if defined _revivemarkers_included
+	{
+		if (LibraryExists("revivemarkers"))
+		{
+			LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
+			IntegrationMode = true;
+		}
+		else
+		{
+			LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
+			IntegrationMode = false;
+		}
+	}
+	#else
+	{
+		LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
+	}
+	#endif
+}
+
+public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+{
+	// OnHaleJump = CreateGlobalForward("VSH_OnDoJump", ET_Hook, Param_CellByRef);
+	#if defined _revivemarkers_included
+	MarkNativeAsOptional("SpawnRMarker");
+	MarkNativeAsOptional("DespawnRMarker");
+	MarkNativeAsOptional("SetReviveCount");
+	MarkNativeAsOptional("setDecayTime");
 	#endif
 }
 
@@ -399,6 +456,14 @@ public OnLibraryAdded(const String:name[])
         Updater_AddPlugin(UPDATE_URL);
     }
 	#endif
+	
+	#if defined _revivemarkers_included
+	if (StrEqual(name, "revivemarkers"))
+    {
+		LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
+		IntegrationMode = true;
+	}
+	#endif
 }
 
 public OnLibraryRemoved(const String:name[])
@@ -407,6 +472,14 @@ public OnLibraryRemoved(const String:name[])
 	if(StrEqual(name, "updater"))
 	{
 		Updater_RemovePlugin();
+	}
+	#endif
+	
+	#if defined _revivemarkers_included
+	if (StrEqual(name, "revivemarkers"))
+    {
+		LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin disabled, using built-in revive markers code");
+		IntegrationMode = false;
 	}
 	#endif
 }
@@ -1778,7 +1851,7 @@ public HintPanelH(Handle:menu, MenuAction:action, client, selection)
 }
 
 
-// ESSENTIAL CODE TO GET THE REANIMATOR WORKING
+// From Wolvan's Respawn Markers plugin
 stock DropReanimator(client) 
 {
 	new clientTeam = GetClientTeam(client);
@@ -1851,7 +1924,16 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 	CreateTimer(0.1, CheckIndex, client); // I know, it's a weird way to do this, but it is what it is.
 	if(blitzisboss)
 	{
-		RemoveReanimator(client);
+		#if defined _revivemarkers_included
+		{
+			if(IntegrationMode)
+				DespawnRMarker(client);
+			else	
+				RemoveReanimator(client);
+		}
+		#else
+			RemoveReanimator(client);
+		#endif
 	}
 	return Plugin_Continue;
 }
@@ -1933,12 +2015,21 @@ public OnClientDisconnect(client)
 {
 	if(blitzisboss)
 	{
-		if(allowrevive)
+		if(allowrevive != 0)
 		{
-			RemoveReanimator(client);
+			#if defined _revivemarkers_included
+			{
+				if(IntegrationMode)
+					DespawnRMarker(client);
+				else	
+					RemoveReanimator(client);
+			}
+			#else
+				RemoveReanimator(client);
+			#endif
+			currentTeam[client] = 0;
+			ChangeClass[client] = false;
 		}
-		currentTeam[client] = 0;
-		ChangeClass[client] = false;
 	}
  }
 
@@ -2167,8 +2258,106 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
 				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
 				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
+				
+				#if defined _revivemarkers_included
+				{
+					if(IntegrationMode)
+					{
+						switch(allowrevive)
+						{
+							case -1, 0:
+							{
+								// NOOP
+							}
+							default:
+							{
+								SetReviveCount(allowrevive);
+							}
+						}
+						
+						switch(FindConVar("revivemarkers_visible_for_medics"))
+						{
+							case 1:
+							{
+								SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 0);
+								SetVis4All = true;
+							}
+							case 0:
+								SetVis4All = false;
+						}
+						
+						switch(FindConVar("revivemarkers_show_markers_for_hale"))
+						{
+							case 1:
+								SetVis4Hale = false;
+							case 0:
+							{
+								SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 1);
+								SetVis4Hale = true;
+							}
+						}
+						
+						switch(FindConVar("revivemarkers_admin_only"))
+						{
+							case 1:
+							{
+								SetConVarInt(FindConVar("revivemarkers_admin_only"), 0);
+								UnRestrictRevives = true;
+							}
+							case 0:
+							{
+								UnRestrictRevives = false;
+							}
+						
+						}
+						
+						switch(FF2_GetBossTeam())
+						{ 
+							case 2: // Bossteam = RED Team
+							{
+								if(FindConVar("revivemarkers_drop_for_one_team") != 2)
+								{
+									switch(FindConVar("revivemarkers_drop_for_one_team"))
+									{
+										case 0:
+											SetOtherTeam = 1;
+										case 1:
+											SetOtherTeam = 2;
+									}
+									SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);
+								}
+								else
+								{
+									SetOtherTeam = 0;
+								}
+							}
+							
+							case 3: // Bossteam = BLU Team
+							{
+								if(FindConVar("revivemarkers_drop_for_one_team") != 1)
+								{
+									switch(FindConVar("revivemarkers_drop_for_one_team"))
+									{
+										case 0:
+											SetOtherTeam = 1;
+										case 2:
+											SetOtherTeam = 3;
+									}
+									SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
+								}
+								else
+								{
+									SetOtherTeam = 0;
+								}
+							}
+						}
+						setDecayTime(float(decaytime));
+					}
+				}
+				#endif
+				
 				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
-		
+				rMaxBounces = FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 14); // Projectile Bounce
 				DisplayCurrentDifficulty(dBoss);
 				if(lvlup)
 				{
@@ -2210,8 +2399,17 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 		{
 			if((attacker!=client || attacker==client) && (GetClientTeam(client)!=FF2_GetBossTeam()))
 			{
-				if(allowrevive)
-					DropReanimator(client);
+				if(allowrevive != 0) // -1 means unlimited revives, any value greater than 0 sets a revive limit
+				{
+					#if defined _revivemarkers_included
+						if(IntegrationMode)
+							SpawnRMarker(client);
+						else	
+							DropReviveMarker(client);
+					#else
+						DropReviveMarker(client);
+					#endif
+				}
 			}
 			
 			if(StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
@@ -2263,6 +2461,35 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 	}
 }	
 
+DropReviveMarker(client)
+{
+	switch(allowrevive)
+	{	
+		case -1: // Unlimited revives
+		{
+			DropReanimator(client);	
+		}
+						
+		case 0: // Revive Markers Disabled
+		{
+			// Noop
+		}
+							
+		default: // Has a limit of number of times player can be revived
+		{
+			static revivecount[MAXPLAYERS+1] = 0;
+			if(revivecount[client] >= allowrevive)
+				PrintHintText(client, "You have exceeded the amount of times you can be revived");
+			else
+			{
+				DropReanimator(client);
+				PrintHintText(client, "You have used %i of %i your available times you can be revived", revivecount[client], allowrevive);
+				revivecount[client]++;
+			}
+		}
+	}
+}
+
 public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	if(blitzisboss)
@@ -2289,6 +2516,45 @@ public Action:ResetBools(Handle:hTimer, any:userid)
 		allowrevive = 0;
 		barrage = false;
 		bRdm = false;
+		
+		#if defined _revivemarkers_included
+		{
+			if(IntegrationMode)
+			{
+				if(SetVis4All)
+				{
+					SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 1);
+					SetVis4All = false
+				}
+				
+				if(SetVis4Hale)
+				{
+					SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 0);
+					SetVis4Hale = false;
+				}
+				
+				switch(SetOtherTeam)
+				{
+					case 1:
+						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 0);
+					case 2:
+						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
+					case 3:
+						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);
+				}
+				
+				if(SetOtherTeam)
+					SetOtherTeam = 0;
+					
+				if(UnRestrictRevives)
+				{
+					SetConVarInt(FindConVar("revivemarkers_admin_only"), 1);
+					UnRestrictRevives = false;
+				}
+			}
+		}
+		#endif
+			
 		blitzisboss = false;
 		CreateTimer(0.2, TimeBeforeRemoval, client);
 	}
@@ -2350,4 +2616,79 @@ public Action:RemoveUber(Handle:hTimer,any:index)
 	new Boss=GetClientOfUserId(FF2_GetBossUserId(index));
 	SetEntProp(Boss, Prop_Data, "m_takedamage", 2);
 	return Plugin_Continue;
+}
+
+// From Asherkin's rocket bounce plugin
+
+public OnEntityCreated(entity, const String:classname[])
+{
+	if (!StrEqual(classname, "tf_projectile_rocket", false))
+		return;
+	rBounce[entity] = 0;
+	if(rMaxBounces == -1)
+		rMaxBounces = GetRandomInt(0,10);
+	rMaxBounceCount[entity] = rMaxBounces;
+	SDKHook(entity, SDKHook_StartTouch, OnStartTouch);
+}
+
+public Action:OnStartTouch(entity, other)
+{
+	if (other > 0 && other <= MaxClients)
+		return Plugin_Continue;
+	if(!blitzisboss)
+		return Plugin_Continue;
+	if(FF2_GetBossIndex(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity")) == -1)
+		return Plugin_Continue;
+	if (rBounce[entity] >= rMaxBounceCount[entity])
+		return Plugin_Continue;
+	SDKHook(entity, SDKHook_Touch, OnTouch);
+	return Plugin_Handled;
+}
+
+public Action:OnTouch(entity, other)
+{
+	decl Float:vOrigin[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vOrigin);
+	
+	decl Float:vAngles[3];
+	GetEntPropVector(entity, Prop_Data, "m_angRotation", vAngles);
+	
+	decl Float:vVelocity[3];
+	GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vVelocity);
+	
+	new Handle:trace = TR_TraceRayFilterEx(vOrigin, vAngles, MASK_SHOT, RayType_Infinite, TEF_ExcludeEntity, entity);
+	
+	if(!TR_DidHit(trace))
+	{
+		CloseHandle(trace);
+		return Plugin_Continue;
+	}
+	
+	decl Float:vNormal[3];
+	TR_GetPlaneNormal(trace, vNormal);
+
+	CloseHandle(trace);
+	
+	new Float:dotProduct = GetVectorDotProduct(vNormal, vVelocity);
+	
+	ScaleVector(vNormal, dotProduct);
+	ScaleVector(vNormal, 2.0);
+	
+	decl Float:vBounceVec[3];
+	SubtractVectors(vVelocity, vNormal, vBounceVec);
+	
+	decl Float:vNewAngles[3];
+	GetVectorAngles(vBounceVec, vNewAngles);
+	
+	TeleportEntity(entity, NULL_VECTOR, vNewAngles, vBounceVec);
+
+	rBounce[entity]++;
+	
+	SDKUnhook(entity, SDKHook_Touch, OnTouch);
+	return Plugin_Handled;
+}
+
+public bool:TEF_ExcludeEntity(entity, contentsMask, any:data)
+{
+	return (entity != data);
 }
