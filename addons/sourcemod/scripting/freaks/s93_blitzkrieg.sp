@@ -95,7 +95,7 @@
 
 // Version Number
 #define MAJOR_REVISION "2"
-#define MINOR_REVISION "2"
+#define MINOR_REVISION "2a"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
@@ -134,135 +134,135 @@ new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
 // Blitz in Medic mode
 static const String:BlitzMedic[][] = {
-	"vo/medic_mvm_resurrect01.wav",
-	"vo/medic_mvm_resurrect02.wav",
-	"vo/medic_mvm_resurrect03.wav"
+	"vo/medic_mvm_resurrect01.mp3",
+	"vo/medic_mvm_resurrect02.mp3",
+	"vo/medic_mvm_resurrect03.mp3"
 };
 
 static const String:BlitzMedicRage[][] = {
-	"vo/medic_mvm_heal_shield02.wav",
-	"vo/medic_positivevocalization05.wav",
-	"vo/taunts/medic_taunts08.wav"
+	"vo/medic_mvm_heal_shield02.mp3",
+	"vo/medic_positivevocalization05.mp3",
+	"vo/taunts/medic_taunts08.mp3"
 };
 
 // Blitz in Soldier mode
 static const String:BlitzSoldier[][] = {
-	"vo/soldier_mvm_resurrect03.wav",
-	"vo/soldier_mvm_resurrect05.wav",
-	"vo/soldier_mvm_resurrect06.wav"
+	"vo/soldier_mvm_resurrect03.mp3",
+	"vo/soldier_mvm_resurrect05.mp3",
+	"vo/soldier_mvm_resurrect06.mp3"
 };
 
 static const String:BlitzSoldierRage[][] = {
-	"vo/taunts/soldier_taunts16.wav",
-	"vo/taunts/soldier_taunts05.wav",
-	"vo/taunts/soldier_taunts21.wav"
+	"vo/taunts/soldier_taunts16.mp3",
+	"vo/taunts/soldier_taunts05.mp3",
+	"vo/taunts/soldier_taunts21.mp3"
 };
 
 // Level Up Enabled Indicator
 static const String:BlitzCanLvlUp[][] = {
-	"vo/mvm_mann_up_mode01.wav",
-	"vo/mvm_mann_up_mode02.wav",
-	"vo/mvm_mann_up_mode03.wav",
-	"vo/mvm_mann_up_mode04.wav",
-	"vo/mvm_mann_up_mode05.wav",
-	"vo/mvm_mann_up_mode06.wav",
-	"vo/mvm_mann_up_mode07.wav",
-	"vo/mvm_mann_up_mode08.wav",
-	"vo/mvm_mann_up_mode09.wav",
-	"vo/mvm_mann_up_mode10.wav",
-	"vo/mvm_mann_up_mode11.wav",
-	"vo/mvm_mann_up_mode12.wav",
-	"vo/mvm_mann_up_mode13.wav",
-	"vo/mvm_mann_up_mode14.wav",
-	"vo/mvm_mann_up_mode15.wav"
+	"vo/mvm_mann_up_mode01.mp3",
+	"vo/mvm_mann_up_mode02.mp3",
+	"vo/mvm_mann_up_mode03.mp3",
+	"vo/mvm_mann_up_mode04.mp3",
+	"vo/mvm_mann_up_mode05.mp3",
+	"vo/mvm_mann_up_mode06.mp3",
+	"vo/mvm_mann_up_mode07.mp3",
+	"vo/mvm_mann_up_mode08.mp3",
+	"vo/mvm_mann_up_mode09.mp3",
+	"vo/mvm_mann_up_mode10.mp3",
+	"vo/mvm_mann_up_mode11.mp3",
+	"vo/mvm_mann_up_mode12.mp3",
+	"vo/mvm_mann_up_mode13.mp3",
+	"vo/mvm_mann_up_mode14.mp3",
+	"vo/mvm_mann_up_mode15.mp3"
 };
 
 // Round Result
 static const String:BlitzIsDefeated[][] = {
-	"vo/mvm_manned_up01.wav",
-	"vo/mvm_manned_up02.wav",
-	"vo/mvm_manned_up03.wav"
+	"vo/mvm_manned_up01.mp3",
+	"vo/mvm_manned_up02.mp3",
+	"vo/mvm_manned_up03.mp3"
 };
 
 static const String:BlitzIsVictorious[][] = {
-	"vo/mvm_game_over_loss01.wav",
-	"vo/mvm_game_over_loss02.wav",
-	"vo/mvm_game_over_loss03.wav",
-	"vo/mvm_game_over_loss04.wav",
-	"vo/mvm_game_over_loss05.wav",
-	"vo/mvm_game_over_loss06.wav",
-	"vo/mvm_game_over_loss07.wav",
-	"vo/mvm_game_over_loss08.wav",
-	"vo/mvm_game_over_loss09.wav",
-	"vo/mvm_game_over_loss10.wav",
-	"vo/mvm_game_over_loss11.wav"
+	"vo/mvm_game_over_loss01.mp3",
+	"vo/mvm_game_over_loss02.mp3",
+	"vo/mvm_game_over_loss03.mp3",
+	"vo/mvm_game_over_loss04.mp3",
+	"vo/mvm_game_over_loss05.mp3",
+	"vo/mvm_game_over_loss06.mp3",
+	"vo/mvm_game_over_loss07.mp3",
+	"vo/mvm_game_over_loss08.mp3",
+	"vo/mvm_game_over_loss09.mp3",
+	"vo/mvm_game_over_loss10.mp3",
+	"vo/mvm_game_over_loss11.mp3"
 };
 
 // Class Reaction Lines
 static const String:ScoutReact[][] = {
-	"vo/scout_sf13_magic_reac03.wav",
-	"vo/scout_sf13_magic_reac07.wav",
-	"vo/scout_sf12_badmagic04.wav"
+	"vo/scout_sf13_magic_reac03.mp3",
+	"vo/scout_sf13_magic_reac07.mp3",
+	"vo/scout_sf12_badmagic04.mp3"
 };
 
 static const String:SoldierReact[][] = {
-	"vo/soldier_sf13_magic_reac03.wav",
-	"vo/soldier_sf12_badmagic07.wav",
-	"vo/soldier_sf12_badmagic13.wav"
+	"vo/soldier_sf13_magic_reac03.mp3",
+	"vo/soldier_sf12_badmagic07.mp3",
+	"vo/soldier_sf12_badmagic13.mp3"
 };
 
 static const String:PyroReact[][] = {
-	"vo/pyro_autodejectedtie01.wav",
-	"vo/pyro_painsevere02.wav",
-	"vo/pyro_painsevere04.wav"
+	"vo/pyro_autodejectedtie01.mp3",
+	"vo/pyro_painsevere02.mp3",
+	"vo/pyro_painsevere04.mp3"
 };
 
 static const String:DemoReact[][] = {
-	"vo/demoman_sf13_magic_reac05.wav",
-	"vo/demoman_sf13_bosses02.wav",
-	"vo/demoman_sf13_bosses03.wav",
-	"vo/demoman_sf13_bosses04.wav",
-	"vo/demoman_sf13_bosses05.wav",
-	"vo/demoman_sf13_bosses06.wav"
+	"vo/demoman_sf13_magic_reac05.mp3",
+	"vo/demoman_sf13_bosses02.mp3",
+	"vo/demoman_sf13_bosses03.mp3",
+	"vo/demoman_sf13_bosses04.mp3",
+	"vo/demoman_sf13_bosses05.mp3",
+	"vo/demoman_sf13_bosses06.mp3"
 };
 
 static const String:HeavyReact[][] = {
-	"vo/heavy_sf13_magic_reac01.wav",
-	"vo/heavy_sf13_magic_reac03.wav",
-	"vo/heavy_cartgoingbackoffense02.wav",
-	"vo/heavy_negativevocalization02.wav",
-	"vo/heavy_negativevocalization06.wav"
+	"vo/heavy_sf13_magic_reac01.mp3",
+	"vo/heavy_sf13_magic_reac03.mp3",
+	"vo/heavy_cartgoingbackoffense02.mp3",
+	"vo/heavy_negativevocalization02.mp3",
+	"vo/heavy_negativevocalization06.mp3"
 };
 
 static const String:EngyReact[][] = {
-	"vo/engineer_sf13_magic_reac01.wav",
-	"vo/engineer_sf13_magic_reac02.wav",
-	"vo/engineer_specialcompleted04.wav",
-	"vo/engineer_painsevere05.wav",
-	"vo/engineer_negativevocalization12.wav"
+	"vo/engineer_sf13_magic_reac01.mp3",
+	"vo/engineer_sf13_magic_reac02.mp3",
+	"vo/engineer_specialcompleted04.mp3",
+	"vo/engineer_painsevere05.mp3",
+	"vo/engineer_negativevocalization12.mp3"
 };
 
 static const String:MedicReact[][] = {
-	"vo/medic_sf13_magic_reac01.wav",
-	"vo/medic_sf13_magic_reac02.wav",
-	"vo/medic_sf13_magic_reac03.wav",
-	"vo/medic_sf13_magic_reac04.wav",
-	"vo/medic_sf13_magic_reac07.wav"
+	"vo/medic_sf13_magic_reac01.mp3",
+	"vo/medic_sf13_magic_reac02.mp3",
+	"vo/medic_sf13_magic_reac03.mp3",
+	"vo/medic_sf13_magic_reac04.mp3",
+	"vo/medic_sf13_magic_reac07.mp3"
 };
 
 static const String:SniperReact[][] = {
-	"vo/sniper_sf13_magic_reac01.wav",
-	"vo/sniper_sf13_magic_reac02.wav",
-	"vo/sniper_sf13_magic_reac04.wav"
+	"vo/sniper_sf13_magic_reac01.mp3",
+	"vo/sniper_sf13_magic_reac02.mp3",
+	"vo/sniper_sf13_magic_reac04.mp3"
 };
 
 static const String:SpyReact[][] = {
-	"vo/Spy_sf13_magic_reac01.wav",
-	"vo/Spy_sf13_magic_reac02.wav",
-	"vo/Spy_sf13_magic_reac03.wav",
-	"vo/Spy_sf13_magic_reac04.wav",
-	"vo/Spy_sf13_magic_reac05.wav",
-	"vo/Spy_sf13_magic_reac06.wav"
+	"vo/Spy_sf13_magic_reac01.mp3",
+	"vo/Spy_sf13_magic_reac02.mp3",
+	"vo/Spy_sf13_magic_reac03.mp3",
+	"vo/Spy_sf13_magic_reac04.mp3",
+	"vo/Spy_sf13_magic_reac05.mp3",
+	"vo/Spy_sf13_magic_reac06.mp3"
 };
 
 public OnMapStart()
