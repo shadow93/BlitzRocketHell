@@ -2406,30 +2406,27 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 	GetEventString(event, "weapon", weapon, sizeof(weapon));
 	new aBoss=FF2_GetBossIndex(attacker);
 	new vBoss=FF2_GetBossIndex(client);
-	if(aBoss!=-1 || vBoss!=-1)
+	if(blitzisboss)
 	{
-		if(FF2_HasAbility(aBoss, this_plugin_name, "blitzkrieg_config"))
+		if(allowrevive != 0 && (FF2_GetBossIndex(client) == -1 || GetClientTeam(client) != FF2_GetBossTeam())) // -1 means unlimited revives, any value greater than 0 sets a revive limit
 		{
-			if((attacker!=client || attacker==client) && (GetClientTeam(client)!=FF2_GetBossTeam()))
-			{
-				if(allowrevive != 0) // -1 means unlimited revives, any value greater than 0 sets a revive limit
-				{
-					#if defined _revivemarkers_included_
-						if(IntegrationMode)
-							SpawnRMarker(client);
-						else	
-							DropReviveMarker(client);
-					#else
-						DropReviveMarker(client);
-					#endif
-				}
-			}
-			
+			#if defined _revivemarkers_included_
+				if(IntegrationMode)
+					SpawnRMarker(client);
+				else	
+					DropReviveMarker(client);
+			#else
+				DropReviveMarker(client);
+			#endif
+		}
+		
+		if(aBoss!=-1)
+		{
 			if(StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
 			{
 				SetEventString(event, "weapon", "firedeath");
 			}
-			
+		
 			else if(StrEqual(weapon, "ubersaw", false)||StrEqual(weapon, "market_gardener", false))
 			{
 				SetEventString(event, "weapon", "saw_kill");
@@ -2445,7 +2442,7 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 				else if (100.0 - bRage > rageonkill)
 					FF2_SetBossCharge(aBoss, 0, bRage+rageonkill);
 			}
-			
+		
 			if(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")==GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
 			{
 				if(combatstyle)
@@ -2464,12 +2461,10 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 				}	
 			}
 		}
-		if(FF2_HasAbility(vBoss, this_plugin_name, "blitzkrieg_config"))
-		{	
-			if(attacker!=vBoss || attacker==vBoss)
-			{
-				CreateTimer(0.2, ResetBools, TIMER_FLAG_NO_MAPCHANGE);
-			}
+		
+		if(vBoss != -1 && (client == vBoss || attacker == vBoss || attacker != vBoss))
+		{
+			CreateTimer(0.2, ResetBools, TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 }	
@@ -2492,7 +2487,10 @@ DropReviveMarker(client)
 		{
 			static revivecount[MAXPLAYERS+1] = 0;
 			if(revivecount[client] >= allowrevive)
+			{
 				PrintHintText(client, "You have exceeded the amount of times you can be revived");
+				revivecount[client] = 0;
+			}
 			else
 			{
 				DropReanimator(client);
