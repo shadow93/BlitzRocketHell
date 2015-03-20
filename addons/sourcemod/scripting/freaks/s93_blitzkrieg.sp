@@ -138,7 +138,7 @@ new currentTeam[MAXPLAYERS+1] = {0, ... };
 new Handle: decayTimers[MAXPLAYERS+1] = { INVALID_HANDLE, ... };
 
 // Integration Mode
-#if defined _revivemarkers_included
+#if defined _revivemarkers_included_
 new bool: IntegrationMode = false; // If Wolvan's revive markers plugin exist, to switch to those instead.
 new bool: SetVis4All = false;
 new bool: SetVis4Hale = false;
@@ -413,25 +413,29 @@ public OnPluginStart2()
 	#if defined _updater_included
 	if (LibraryExists("updater"))
     {
+		Debug("Updater Detected, enabling updater integration");
 		Updater_AddPlugin(UPDATE_URL);
 	}
 	#endif 
 	
-	#if defined _revivemarkers_included
+	#if defined _revivemarkers_included_
 	{
 		if (LibraryExists("revivemarkers"))
 		{
+			Debug("Revive Markers plugin detected, enabling integration mode");
 			LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
 			IntegrationMode = true;
 		}
 		else
 		{
+			Debug("Revive Markers plugin not found, using built-in revive markers code");
 			LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
 			IntegrationMode = false;
 		}
 	}
 	#else
 	{
+		Debug("Subplugin compiled without revive markers plugin integration support.");
 		LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
 	}
 	#endif
@@ -440,7 +444,7 @@ public OnPluginStart2()
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
 	// OnHaleJump = CreateGlobalForward("VSH_OnDoJump", ET_Hook, Param_CellByRef);
-	#if defined _revivemarkers_included
+	#if defined _revivemarkers_included_
 	MarkNativeAsOptional("SpawnRMarker");
 	MarkNativeAsOptional("DespawnRMarker");
 	MarkNativeAsOptional("SetReviveCount");
@@ -453,13 +457,15 @@ public OnLibraryAdded(const String:name[])
 	#if defined _updater_included
     if (StrEqual(name, "updater"))
     {
-        Updater_AddPlugin(UPDATE_URL);
+		Debug("Updater Detected, enabling updater integration");
+		Updater_AddPlugin(UPDATE_URL);
     }
 	#endif
 	
-	#if defined _revivemarkers_included
+	#if defined _revivemarkers_included_
 	if (StrEqual(name, "revivemarkers"))
     {
+		Debug("Revive Markers plugin detected, enabling integration mode");
 		LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
 		IntegrationMode = true;
 	}
@@ -471,13 +477,15 @@ public OnLibraryRemoved(const String:name[])
 	#if defined _updater_included
 	if(StrEqual(name, "updater"))
 	{
+		Debug("Updater unloaded, disabling updater integration");
 		Updater_RemovePlugin();
 	}
 	#endif
 	
-	#if defined _revivemarkers_included
+	#if defined _revivemarkers_included_
 	if (StrEqual(name, "revivemarkers"))
     {
+		Debug("Revive Markers plugin unloaded, disabling integration mode");
 		LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin disabled, using built-in revive markers code");
 		IntegrationMode = false;
 	}
@@ -1924,7 +1932,7 @@ public Action:OnPlayerSpawn(Handle:event, const String:name[], bool:dontbroadcas
 	CreateTimer(0.1, CheckIndex, client); // I know, it's a weird way to do this, but it is what it is.
 	if(blitzisboss)
 	{
-		#if defined _revivemarkers_included
+		#if defined _revivemarkers_included_
 		{
 			if(IntegrationMode)
 				DespawnRMarker(client);
@@ -2017,7 +2025,7 @@ public OnClientDisconnect(client)
 	{
 		if(allowrevive != 0)
 		{
-			#if defined _revivemarkers_included
+			#if defined _revivemarkers_included_
 			{
 				if(IntegrationMode)
 					DespawnRMarker(client);
@@ -2259,7 +2267,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
 				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
 				
-				#if defined _revivemarkers_included
+				#if defined _revivemarkers_included_
 				{
 					if(IntegrationMode)
 					{
@@ -2275,10 +2283,11 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 							}
 						}
 						
-						switch(FindConVar("revivemarkers_visible_for_medics"))
+						switch(GetConVarInt(FindConVar("revivemarkers_visible_for_medics")))
 						{
 							case 1:
 							{
+								Debug("Setting ConVar 'revivemarkers_visible_for_medics' to 0");		
 								SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 0);
 								SetVis4All = true;
 							}
@@ -2286,21 +2295,23 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 								SetVis4All = false;
 						}
 						
-						switch(FindConVar("revivemarkers_show_markers_for_hale"))
+						switch(GetConVarInt(FindConVar("revivemarkers_show_markers_for_hale")))
 						{
 							case 1:
 								SetVis4Hale = false;
 							case 0:
 							{
+								Debug("Setting ConVar 'revivemarkers_show_markers_for_hale' to 1");
 								SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 1);
 								SetVis4Hale = true;
 							}
 						}
 						
-						switch(FindConVar("revivemarkers_admin_only"))
+						switch(GetConVarInt(FindConVar("revivemarkers_admin_only")))
 						{
 							case 1:
 							{
+								Debug("Setting ConVar 'revivemarkers_admin_only' to 0");
 								SetConVarInt(FindConVar("revivemarkers_admin_only"), 0);
 								UnRestrictRevives = true;
 							}
@@ -2315,15 +2326,16 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 						{ 
 							case 2: // Bossteam = RED Team
 							{
-								if(FindConVar("revivemarkers_drop_for_one_team") != 2)
+								if(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")) != 2)
 								{
-									switch(FindConVar("revivemarkers_drop_for_one_team"))
+									switch(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")))
 									{
 										case 0:
 											SetOtherTeam = 1;
 										case 1:
 											SetOtherTeam = 2;
 									}
+									Debug("Setting ConVar 'revivemarkers_drop_for_one_team' to 2");
 									SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);
 								}
 								else
@@ -2334,15 +2346,16 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 							
 							case 3: // Bossteam = BLU Team
 							{
-								if(FindConVar("revivemarkers_drop_for_one_team") != 1)
+								if(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")) != 1)
 								{
-									switch(FindConVar("revivemarkers_drop_for_one_team"))
+									switch(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")))
 									{
 										case 0:
 											SetOtherTeam = 1;
 										case 2:
 											SetOtherTeam = 3;
 									}
+									Debug("Setting ConVar 'revivemarkers_drop_for_one_team' to 1");
 									SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
 								}
 								else
@@ -2351,7 +2364,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 								}
 							}
 						}
-						setDecayTime(float(decaytime));
+						setDecayTime(decaytime);
 					}
 				}
 				#endif
@@ -2401,7 +2414,7 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 			{
 				if(allowrevive != 0) // -1 means unlimited revives, any value greater than 0 sets a revive limit
 				{
-					#if defined _revivemarkers_included
+					#if defined _revivemarkers_included_
 						if(IntegrationMode)
 							SpawnRMarker(client);
 						else	
@@ -2517,18 +2530,20 @@ public Action:ResetBools(Handle:hTimer, any:userid)
 		barrage = false;
 		bRdm = false;
 		
-		#if defined _revivemarkers_included
+		#if defined _revivemarkers_included_
 		{
 			if(IntegrationMode)
 			{
 				if(SetVis4All)
 				{
+					Debug("Resetting ConVar 'revivemarkers_visible_for_medics' to 1");
 					SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 1);
-					SetVis4All = false
+					SetVis4All = false;
 				}
 				
 				if(SetVis4Hale)
 				{
+					Debug("Resetting ConVar 'revivemarkers_show_markers_for_hale' to 0");
 					SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 0);
 					SetVis4Hale = false;
 				}
@@ -2536,11 +2551,20 @@ public Action:ResetBools(Handle:hTimer, any:userid)
 				switch(SetOtherTeam)
 				{
 					case 1:
+					{
+						Debug("Resetting ConVar 'revivemarkers_drop_for_one_team' to 0");
 						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 0);
+					}
 					case 2:
+					{
+						Debug("Resetting ConVar 'revivemarkers_drop_for_one_team' to 1");	
 						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
+					}
 					case 3:
-						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);
+					{
+						Debug("Resetting ConVar 'revivemarkers_drop_for_one_team' to 2");
+						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);	
+					}
 				}
 				
 				if(SetOtherTeam)
@@ -2548,6 +2572,7 @@ public Action:ResetBools(Handle:hTimer, any:userid)
 					
 				if(UnRestrictRevives)
 				{
+					Debug("Resetting ConVar 'revivemarkers_admin_only' to 1");
 					SetConVarInt(FindConVar("revivemarkers_admin_only"), 1);
 					UnRestrictRevives = false;
 				}
