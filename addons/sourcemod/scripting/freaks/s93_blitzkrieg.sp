@@ -67,6 +67,18 @@
 				-1 - Random Amount
 				0 - Disabled
 				>0 - Bounce for X times
+			
+			Intro / Outtro Track Settings
+			arg15 - Intro Music? If none specified, will use built-in track.
+			arg16 - End Track Music? 
+				0 - Use built-in
+				1 - Use Custom
+				2 - Mute end track
+			arg17 - Victory Track
+			arg18 - Defeat Track
+			arg19 - Stalemate Track
+			arg20 - Boss Model Path (due to class changes)
+			arg21 - Override default rage / death effect lines to use sound_ability / sound_nextlife / sound_last_life
 		
 		mini_blitzkrieg
 			arg0 - Ability Slot
@@ -93,6 +105,9 @@
 #undef REQUIRE_PLUGIN
 #tryinclude <updater>
 #tryinclude <revivemarkers>
+
+// Primary CONFIG
+#define BOSSCONFIG "blitzkrieg_config"
 
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
@@ -127,7 +142,7 @@ new lvlup;
 new bool:bRdm = false;
 new bool:barrage = false;
 new bool:blitzisboss = false;
-new bool:BlitzIsWinner = false;
+new BlitzIsWinner = 0;
 
 // Reanimators
 new allowrevive;
@@ -146,6 +161,17 @@ new bool: UnRestrictRevives = false;
 new SetOtherTeam = 0;
 #endif
 
+// Outtro Track
+new OverrideStockEndTrack = 0;
+new String: VictoryTrack[PLATFORM_MAX_PATH];
+new String: DefeatTrack[PLATFORM_MAX_PATH];
+new String: StalemateTrack[PLATFORM_MAX_PATH];
+
+// Model
+new String: dBossModel[PLATFORM_MAX_PATH] = "models/freak_fortress_2/shadow93/dmedic/dmedic.mdl";
+
+// VO sound override
+new bool:BlitzBossOverrideVO = false;
 /*
 	// Charge Stuff (for future use)
 	new Handle:jumpHUD, Handle:OnHaleJump = null;
@@ -206,6 +232,12 @@ static const String:BlitzCanLvlUp[][] = {
 
 // Round Result
 static const String:BlitzIsDefeated[][] = {
+	"vo/mvm_manned_up01.mp3",
+	"vo/mvm_manned_up02.mp3",
+	"vo/mvm_manned_up03.mp3"
+};
+
+static const String:BlitzIsAlive[][] = {
 	"vo/mvm_manned_up01.mp3",
 	"vo/mvm_manned_up02.mp3",
 	"vo/mvm_manned_up03.mp3"
@@ -294,6 +326,86 @@ static const String:SpyReact[][] = {
 
 public OnMapStart()
 {
+	// N00P
+}
+
+
+public Plugin:myinfo = {
+	name = "Freak Fortress 2: The Blitzkrieg",
+	author = "SHADoW NiNE TR3S",
+	description="Projectile Hell (TF2Danmaku) BETA",
+	version=PLUGIN_VERSION,
+};
+
+public OnPluginStart2()
+{
+	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
+	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
+	HookEvent("teamplay_broadcast_audio", OnAnnounce, EventHookMode_Pre);
+	HookEvent("post_inventory_application", OnPlayerInventory, EventHookMode_PostNoCopy);
+	HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
+	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_Pre);
+	HookEvent("player_changeclass", OnChangeClass);
+	RegConsoleCmd("ff2_hp", CheckLevel);
+	RegConsoleCmd("ff2hp", CheckLevel);
+	RegConsoleCmd("hale_hp", CheckLevel);
+	RegConsoleCmd("halehp", CheckLevel);
+	RegConsoleCmd("ff2_classinfo", BlitzHelp);
+	RegConsoleCmd("ff2classinfo", BlitzHelp);
+	RegConsoleCmd("hale_classinfo", BlitzHelp);
+	RegConsoleCmd("haleclassinfo",	BlitzHelp);
+	RegConsoleCmd("ff2help", BlitzHelp);
+	RegConsoleCmd("helpme",	BlitzHelp);
+	
+	for (new i = 1; i <= MaxClients; i++) 
+	{
+		if (IsValidClient(i)) 
+		{
+			currentTeam[i] = GetClientTeam(i);
+			ChangeClass[i] = false;
+		}
+	}
+	
+	CheckLibraries();
+	PrecacheStuff();
+	LoadTranslations("ff2_blitzkrieg.phrases");
+}
+
+public CheckLibraries()
+{
+	#if defined _updater_included
+	if (LibraryExists("updater"))
+    {
+		Debug("Updater Detected, enabling updater integration");
+		Updater_AddPlugin(UPDATE_URL);
+	}
+	#endif 
+	
+	#if defined _revivemarkers_included_
+	{
+		if (LibraryExists("revivemarkers"))
+		{
+			Debug("Revive Markers plugin detected, enabling integration mode");
+			LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
+			IntegrationMode = true;
+		}
+		else
+		{
+			Debug("Revive Markers plugin not found, using built-in revive markers code");
+			LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
+			IntegrationMode = false;
+		}
+	}
+	#else
+	{
+		Debug("Subplugin compiled without revive markers plugin integration support.");
+		LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
+	}
+	#endif
+}
+
+public PrecacheStuff()
+{
 	// ROUND EVENTS
 	PrecacheSound(BLITZROUNDSTART,true);
 	PrecacheSound(BLITZROUNDEND, true);
@@ -369,76 +481,10 @@ public OnMapStart()
 	{
 		PrecacheSound(BlitzIsVictorious[i], true);
 	}
-	// Translations File
-	LoadTranslations("ff2_blitzkrieg.phrases");
-}
-
-
-public Plugin:myinfo = {
-	name = "Freak Fortress 2: The Blitzkrieg",
-	author = "SHADoW NiNE TR3S",
-	description="Projectile Hell (TF2Danmaku) BETA",
-	version=PLUGIN_VERSION,
-};
-
-public OnPluginStart2()
-{
-	HookEvent("arena_round_start", OnRoundStart, EventHookMode_PostNoCopy);
-	HookEvent("arena_win_panel", OnRoundEnd, EventHookMode_PostNoCopy);
-	HookEvent("teamplay_broadcast_audio", OnAnnounce, EventHookMode_Pre);
-	HookEvent("post_inventory_application", OnPlayerInventory, EventHookMode_PostNoCopy);
-	HookEvent("player_death", OnPlayerDeath, EventHookMode_Pre);
-	HookEvent("player_spawn", OnPlayerSpawn, EventHookMode_Pre);
-	HookEvent("player_changeclass", OnChangeClass);
-	RegConsoleCmd("ff2_hp", CheckLevel);
-	RegConsoleCmd("ff2hp", CheckLevel);
-	RegConsoleCmd("hale_hp", CheckLevel);
-	RegConsoleCmd("halehp", CheckLevel);
-	RegConsoleCmd("ff2_classinfo", BlitzHelp);
-	RegConsoleCmd("ff2classinfo", BlitzHelp);
-	RegConsoleCmd("hale_classinfo", BlitzHelp);
-	RegConsoleCmd("haleclassinfo",	BlitzHelp);
-	RegConsoleCmd("ff2help", BlitzHelp);
-	RegConsoleCmd("helpme",	BlitzHelp);
-	
-	for (new i = 1; i <= MaxClients; i++) 
+	for (new i = 0; i < sizeof(BlitzIsAlive); i++)
 	{
-		if (IsClientInGame(i)) 
-		{
-			currentTeam[i] = GetClientTeam(i);
-			ChangeClass[i] = false;
-		}
+		PrecacheSound(BlitzIsAlive[i], true);
 	}
-	
-	#if defined _updater_included
-	if (LibraryExists("updater"))
-    {
-		Debug("Updater Detected, enabling updater integration");
-		Updater_AddPlugin(UPDATE_URL);
-	}
-	#endif 
-	
-	#if defined _revivemarkers_included_
-	{
-		if (LibraryExists("revivemarkers"))
-		{
-			Debug("Revive Markers plugin detected, enabling integration mode");
-			LogMessage("[FF2] The Blitzkrieg: Revive Markers plugin detected, enabling integration mode");
-			IntegrationMode = true;
-		}
-		else
-		{
-			Debug("Revive Markers plugin not found, using built-in revive markers code");
-			LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
-			IntegrationMode = false;
-		}
-	}
-	#else
-	{
-		Debug("Subplugin compiled without revive markers plugin integration support.");
-		LogMessage("[FF2] The Blitzkrieg: Using built-in revive markers code");
-	}
-	#endif
 }
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
@@ -524,7 +570,7 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 							if(bRdm)
 								weapondifficulty=minlvl;
 							else
-								weapondifficulty=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 1, 2);
+								weapondifficulty=FF2_GetAbilityArgument(boss,this_plugin_name,BOSSCONFIG, 1, 2);
 						}
 						default:
 							weapondifficulty=weapondifficulty+1;
@@ -607,7 +653,7 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 
 ClassResponses(client)
 {
-	if(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+	if(IsValidClient(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 	{
 		new String:Reaction[PLATFORM_MAX_PATH];
 		switch(TF2_GetPlayerClass(client))
@@ -664,39 +710,46 @@ ClassResponses(client)
 // Switch Roles ability
 PlotTwist(client)
 {
-	if(barrage)
+	if(!BlitzBossOverrideVO)
 	{
-		new String:StillAlive[PLATFORM_MAX_PATH];
-		switch(TF2_GetPlayerClass(client))
+		if(barrage)
 		{
-			case TFClass_Medic: // Medic
+			new String:StillAlive[PLATFORM_MAX_PATH];
+			switch(TF2_GetPlayerClass(client))
 			{
-				TF2_SetPlayerClass(client, TFClass_Soldier);
-				strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzSoldier[GetRandomInt(0, sizeof(BlitzSoldier)-1)]);
+				case TFClass_Medic: // Medic
+				{
+					TF2_SetPlayerClass(client, TFClass_Soldier);
+					strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzSoldier[GetRandomInt(0, sizeof(BlitzSoldier)-1)]);
+				}
+				case TFClass_Soldier: // Soldier
+				{
+					TF2_SetPlayerClass(client, TFClass_Medic);
+					strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzMedic[GetRandomInt(0, sizeof(BlitzMedic)-1)]);		
+				}
 			}
-			case TFClass_Soldier: // Soldier
-			{
-				TF2_SetPlayerClass(client, TFClass_Medic);
-				strcopy(StillAlive, PLATFORM_MAX_PATH, BlitzMedic[GetRandomInt(0, sizeof(BlitzMedic)-1)]);		
-			}
+			EmitSoundToAll(StillAlive);	
 		}
-		EmitSoundToAll(StillAlive);	
-	}
-	else
-	{
-		switch (GetRandomInt(0,1))	
+		else
 		{
-			case 0:
-				TF2_SetPlayerClass(client, TFClass_Medic);
-			case 1:
-				TF2_SetPlayerClass(client, TFClass_Soldier);
+			switch (GetRandomInt(0,1))	
+			{
+				case 0:
+					TF2_SetPlayerClass(client, TFClass_Medic);
+				case 1:
+					TF2_SetPlayerClass(client, TFClass_Soldier);
+			}
 		}
 	}
 	TF2_RemoveAllWeapons(client);
 	// ONLY FOR LEGACY REASONS, FF2 1.10.3 and newer doesn't actually need this to restore the boss model.
-	SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
-	AcceptEntityInput(client, "SetCustomModel");
-	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
+	if(dBossModel[0] != '\0')
+	{
+		PrecacheModel(dBossModel);
+		SetVariantString(dBossModel);
+		AcceptEntityInput(client, "SetCustomModel");
+		SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
+	}
 	// Removing all wearables
 	new entity, owner;
 	while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
@@ -1394,6 +1447,7 @@ BlitzkriegBarrage(client)
 }
 
 // Custom Weaponset. I might eventually turn it into its own external config or something.
+// OnGiveNamedItem interferes with FF2's OnGiveNamedItem, so im using this method via post_inventory_application
 CheckWeapons(client)
 {
 	new weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
@@ -1764,7 +1818,7 @@ Teleport_Me(client)
 	new teleportme;
 	new bool:AlivePlayers;
 	for(new ii=1;ii<=MaxClients;ii++)
-	if(IsValidEdict(ii) && IsClientInGame(ii) && IsPlayerAlive(ii) && GetClientTeam(ii)!=FF2_GetBossTeam())
+	if(IsValidEdict(ii) && IsValidClient(ii) && IsPlayerAlive(ii) && GetClientTeam(ii)!=FF2_GetBossTeam())
 	{
 		AlivePlayers=true;
 		break;
@@ -1955,17 +2009,68 @@ public Action:CheckAbility(Handle:hTimer, any: client) // Now we actually check 
 {
 	new boss=GetClientOfUserId(FF2_GetBossUserId(client));
 	new b0ss=FF2_GetBossIndex(client);
-	if(FF2_HasAbility(b0ss, this_plugin_name, "blitzkrieg_config"))
+	if(FF2_HasAbility(b0ss, this_plugin_name, BOSSCONFIG))
 	{
 		blitzisboss = true;
 		bRdm = false;
 		barrage = false;
 
 		// Intro BGM
-		EmitSoundToAll(BLITZROUNDSTART);
+		new String: INTROM[PLATFORM_MAX_PATH];
+		FF2_GetAbilityArgumentString(boss, this_plugin_name, BOSSCONFIG, 15, INTROM, PLATFORM_MAX_PATH);
+		if(INTROM[0] != '\0')
+		{
+			PrecacheSound(INTROM, true);
+			EmitSoundToAll(INTROM);
+		}
+		else
+		{
+			EmitSoundToAll(BLITZROUNDSTART);
+		}
+		
+		// Outtro, if any
+		new type = FF2_GetAbilityArgument(boss,this_plugin_name,BOSSCONFIG, 16);
+		switch(type)
+		{
+			case 1:
+			{
+				FF2_GetAbilityArgumentString(boss,this_plugin_name,BOSSCONFIG,17,VictoryTrack,sizeof(VictoryTrack));
+				FF2_GetAbilityArgumentString(boss,this_plugin_name,BOSSCONFIG,18,DefeatTrack,sizeof(DefeatTrack));
+				FF2_GetAbilityArgumentString(boss,this_plugin_name,BOSSCONFIG,19,StalemateTrack,sizeof(StalemateTrack));
+				if(VictoryTrack[0] != '\0')
+				{
+					PrecacheSound(VictoryTrack, true);
+				}
+				
+				if(DefeatTrack[0] != '\0')
+				{
+					PrecacheSound(DefeatTrack, true);
+				}
+				else
+				{
+					DefeatTrack = VictoryTrack;
+					PrecacheSound(DefeatTrack, true);
+				}
+	
+				if(StalemateTrack[0] != '\0')
+				{
+					PrecacheSound(StalemateTrack, true);
+				}
+				else
+				{
+					StalemateTrack = VictoryTrack;
+					PrecacheSound(StalemateTrack, true);
+				}
+				OverrideStockEndTrack = 1;
+			}
+			case 2:
+				OverrideStockEndTrack = 2;
+			default:
+				OverrideStockEndTrack = 0;
+		}
 		
 		// Custom Weapons
-		customweapons=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+		customweapons=FF2_GetAbilityArgument(boss,this_plugin_name,BOSSCONFIG, 3); // use custom weapons
 		if(customweapons)
 		{
 			for(new i = 1; i <= MaxClients; i++ )
@@ -1974,6 +2079,7 @@ public Action:CheckAbility(Handle:hTimer, any: client) // Now we actually check 
 					TF2_RegeneratePlayer(i);
 			}
 		}
+		BlitzBossOverrideVO = bool:FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 21); // use custom weapons
 		
 	}
 }
@@ -1981,15 +2087,12 @@ public Action:CheckAbility(Handle:hTimer, any: client) // Now we actually check 
 public Action:OnPlayerInventory(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(blitzisboss)
+	if(blitzisboss && customweapons)
 	{
-		if(customweapons)
-		{
-			if(IsClientInGame(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
-			{		
-				CheckWeapons(client);
-				PlayerHelpPanel(client);
-			}
+		if(IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+		{		
+			CheckWeapons(client);
+			PlayerHelpPanel(client);
 		}
 	}
 	return Plugin_Continue;
@@ -2135,8 +2238,6 @@ public Action:KillGameText(Handle:hTimer, any:iEntity)
     return Plugin_Stop;
 }
 
-
-
 // Stocks
 
 stock SpawnWeapon(client,String:name[],index,level,qual,String:att[])
@@ -2182,8 +2283,7 @@ stock SetAmmo(client, slot, ammo)
 stock bool:IsValidClient(client)
 {
 	if (client <= 0 || client > MaxClients) return false;
-	if (!IsClientInGame(client)) return false;
-	if (!IsClientConnected(client)) return false;
+	if (!IsClientInGame(client) || !IsClientConnected(client)) return false;
 	if (IsClientSourceTV(client) || IsClientReplay(client)) return false;
 	return true;
 }
@@ -2196,8 +2296,6 @@ public Action:OnAnnounce(Handle:event, const String:name[], bool:dontBroadcast)
 		GetEventString(event, "sound", strAudio, sizeof(strAudio));
 		if(strncmp(strAudio, "Game.Your", 9) == 0 || strcmp(strAudio, "Game.Stalemate") == 0)
 		{
-			EmitSoundToAll(BLITZROUNDEND);
-			// Block sound from being played
 			return Plugin_Handled;
 		}
 		return Plugin_Continue;
@@ -2213,7 +2311,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 		dBoss = GetClientOfUserId(FF2_GetBossUserId());
 		if(dBoss>0)
 		{
-			if (FF2_HasAbility(0, this_plugin_name, "blitzkrieg_config"))
+			if (FF2_HasAbility(0, this_plugin_name, BOSSCONFIG))
 			{	
 				// Double Checking
 				if(!blitzisboss || bRdm || barrage)
@@ -2226,7 +2324,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				// Custom Weapon Handler System
 				if(!customweapons)
 				{
-					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 3); // use custom weapons
+					customweapons=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 3); // use custom weapons
 					if(customweapons)
 					{
 						CreateTimer(0.1, PostSetup);
@@ -2234,20 +2332,21 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				}
 			
 				// Weapon Difficulty
-				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 1, 2);
+				weapondifficulty=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 1, 2);
 				if(!weapondifficulty)
 				{
 					bRdm = true;
-					minlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 10, 2); // Minimum level to roll on random mode
-					maxlvl=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 11, 5); // Max level to roll on random mode
+					minlvl=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 10, 2); // Minimum level to roll on random mode
+					maxlvl=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 11, 5); // Max level to roll on random mode
 					weapondifficulty=GetRandomInt(minlvl,maxlvl);
 				}
 				
 				// Weapon Stuff
-				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 2);
-				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 5, 180); // RAGE/Weaponswitch Ammo
-				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 6, 360); // Blitzkrieg Rampage Ammo
-				startmode=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 7); // Start with launcher or no (with melee mode)
+				combatstyle=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 2);
+				miniblitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 5, 180); // RAGE/Weaponswitch Ammo
+				blitzkriegrage=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 6, 360); // Blitzkrieg Rampage Ammo
+				startmode=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 7); // Start with launcher or no (with melee mode)
+				FF2_GetAbilityArgumentString(0, this_plugin_name, BOSSCONFIG, 20, dBossModel, sizeof(dBossModel)); // Model Path
 				switch(combatstyle)
 				{
 					case 1:
@@ -2263,9 +2362,9 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				}
 
 				// Misc
-				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 4); // Voice Lines
-				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 8); // Allow Reanimator
-				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 9); // Reanimator decay time
+				voicelines=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 4); // Voice Lines
+				allowrevive=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 8); // Allow Reanimator
+				decaytime=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 9); // Reanimator decay time
 				
 				#if defined _revivemarkers_included_
 				{
@@ -2368,9 +2467,8 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 					}
 				}
 				#endif
-				
-				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 12); // Allow Blitzkrieg to change difficulty level on random mode?
-				rMaxBounces = FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 14); // Projectile Bounce
+				lvlup=FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 12); // Allow Blitzkrieg to change difficulty level on random mode?
+				rMaxBounces = FF2_GetAbilityArgument(0,this_plugin_name,BOSSCONFIG, 14); // Projectile Bounce
 				DisplayCurrentDifficulty(dBoss);
 				if(lvlup)
 				{
@@ -2388,7 +2486,7 @@ public Action:PostSetup(Handle:hTimer, any:userid)
 	{
 		if(blitzisboss && customweapons)
 		{
-			if(IsClientInGame(client) && IsPlayerAlive(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+			if(IsValidClient(client) && IsPlayerAlive(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 			{		
 				TF2_RegeneratePlayer(client);
 				if(!IsFakeClient(client))
@@ -2432,7 +2530,7 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 				SetEventString(event, "weapon", "saw_kill");
 			}
 
-			new Float:rageonkill = FF2_GetAbilityArgumentFloat(aBoss,this_plugin_name,"blitzkrieg_config",13,0.0);
+			new Float:rageonkill = FF2_GetAbilityArgumentFloat(aBoss,this_plugin_name,BOSSCONFIG,13,0.0);
 			new Float:bRage = FF2_GetBossCharge(aBoss,0);
 			
 			if(rageonkill)
@@ -2506,9 +2604,40 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 	if(blitzisboss)
 	{
 		if (GetEventInt(event, "winning_team") == FF2_GetBossTeam())
-			BlitzIsWinner = true;
-		else
-			BlitzIsWinner = false;
+		{
+			BlitzIsWinner = 3;
+		}
+		else if (GetEventInt(event, "winning_team") == ((FF2_GetBossTeam()==_:TFTeam_Blue) ? (_:TFTeam_Red) : (_:TFTeam_Blue)))
+		{
+			BlitzIsWinner = 2;
+		}
+		else if (GetEventInt(event, "winning_team") == 0)
+		{
+			BlitzIsWinner = 1;
+		}
+		
+		switch(OverrideStockEndTrack)
+		{
+			case 2:
+			{
+				// NOOP
+			}
+			case 1:
+			{
+				switch(BlitzIsWinner)
+				{
+					case 3:
+						EmitSoundToAll(VictoryTrack);
+					case 2:
+						EmitSoundToAll(DefeatTrack);
+					case 1:
+						EmitSoundToAll(StalemateTrack);
+				}
+			}
+			default:
+				EmitSoundToAll(BLITZROUNDEND);
+		}
+
 		CreateTimer(5.0, RoundResultSound, TIMER_FLAG_NO_MAPCHANGE);
 		CreateTimer(0.2, ResetBools, TIMER_FLAG_NO_MAPCHANGE);
 	}
@@ -2593,23 +2722,29 @@ public Action: WhatWereYouThinking(Handle:hTimer, any:userid)
 public Action:RoundResultSound(Handle:hTimer, any:userid)
 {
 	new String:BlitzRoundResult[PLATFORM_MAX_PATH];
-	if (BlitzIsWinner)
-		strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsVictorious[GetRandomInt(0, sizeof(BlitzIsVictorious)-1)]);
-	else
-		strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsDefeated[GetRandomInt(0, sizeof(BlitzIsDefeated)-1)]);	
+	switch(BlitzIsWinner)
+	{
+		case 3:
+			strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsVictorious[GetRandomInt(0, sizeof(BlitzIsVictorious)-1)]);
+		case 2:
+			strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsDefeated[GetRandomInt(0, sizeof(BlitzIsDefeated)-1)]);	
+		case 1:
+			strcopy(BlitzRoundResult, PLATFORM_MAX_PATH, BlitzIsAlive[GetRandomInt(0, sizeof(BlitzIsAlive)-1)]);	
+	}
+
 	for(new i = 1; i <= MaxClients; i++ )
 	{
-		if(IsClientInGame(i) && IsClientConnected(i) && GetClientTeam(i) != FF2_GetBossTeam())
+		if(IsValidClient(i) &&  GetClientTeam(i) != FF2_GetBossTeam())
 		{
 			EmitSoundToClient(i, BlitzRoundResult);	
 		}
 	}
-	BlitzIsWinner = false;
+	BlitzIsWinner = 0;
 }
 
 public Action:FF2_OnTriggerHurt(userid,triggerhurt,&Float:damage)
 {
-	if(FF2_HasAbility(userid, this_plugin_name, "blitzkrieg_config"))
+	if(FF2_HasAbility(userid, this_plugin_name, BOSSCONFIG))
 	{
 		new Boss=GetClientOfUserId(FF2_GetBossUserId(userid));
 		new Float:bRage = FF2_GetBossCharge(Boss,0);
@@ -2649,7 +2784,7 @@ public OnEntityCreated(entity, const String:classname[])
 		return;
 	rBounce[entity] = 0;
 	if(rMaxBounces == -1)
-		rMaxBounces = GetRandomInt(0,10);
+		rMaxBounces = GetRandomInt(0,15); // RNG :3
 	rMaxBounceCount[entity] = rMaxBounces;
 	SDKHook(entity, SDKHook_StartTouch, OnStartTouch);
 }
