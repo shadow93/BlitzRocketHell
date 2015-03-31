@@ -627,7 +627,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 	MarkNativeAsOptional("SpawnRMarker");
 	MarkNativeAsOptional("DespawnRMarker");
 	MarkNativeAsOptional("SetReviveCount");
-	MarkNativeAsOptional("setReviveMarkerDecayTime");
+	MarkNativeAsOptional("setDecayTime");
 	#endif
 }
 
@@ -1209,6 +1209,7 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 		if (FF2_GetRoundState()==1)
 		{
 			barrage=true;
+			BMO_CurrentIsBlizkrieg = true;
 			TF2_AddCondition(Boss,TFCond_Ubercharged,FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,1,5.0)); // Ubercharge
 			Blitz_RemoveUberAt = GetEngineTime() + FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,1,5.0);
 			TF2_AddCondition(Boss,BLITZKRIEG_COND_CRIT,FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
@@ -1270,6 +1271,8 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 	{		
 		if (FF2_GetRoundState()==1)
 		{	
+			if(!barrage)
+				BMO_CurrentIsBlizkrieg = false;
 			TF2_AddCondition(Boss,BLITZKRIEG_COND_CRIT,FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,1,5.0)); // Kritzkrieg
 			TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
 			//RAGE Voice lines depending on Blitzkrieg's current player class (Blitzkrieg is two classes in 1 - Medic / Soldier soul in the same body)
@@ -1502,7 +1505,6 @@ PlotTwist(client)
 RandomDanmaku(client, difficulty)
 {		
 	new index;
-	BMO_CurrentIsBlizkrieg = false;
 	BMO_CurrentRocketType = GetRandomInt(0,9);
 	
 	switch(BMO_CurrentRocketType)
@@ -3202,9 +3204,9 @@ public Action:OnPlayerRunCmd(clientIdx, &buttons, &impulse, Float:vel[3], Float:
 		if (countChanged || curTime >= SPT_NextCenterTextAt[clientIdx])
 		{
 			if (SPT_ChargesRemaining[clientIdx] > 0)
-				PrintCenterText(clientIdx, SPT_CenterText, SPT_ChargesRemaining[clientIdx]);
+				PrintHintText(clientIdx, SPT_CenterText, SPT_ChargesRemaining[clientIdx]);
 			else if (countChanged)
-				PrintCenterText(clientIdx, ""); // clear the outdated message
+				PrintHintText(clientIdx, ""); // clear the outdated message
 				
 			SPT_NextCenterTextAt[clientIdx] = curTime + SPT_CENTER_TEXT_INTERVAL;
 		}
