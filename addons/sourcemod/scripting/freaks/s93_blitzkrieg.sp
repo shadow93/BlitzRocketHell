@@ -180,8 +180,6 @@
 #define REQUIRE_PLUGIN
 
 // sarysa's code
-#define _updater_included
-#undef _updater_included // don't update this forked version. (also, no #ifdef or #ifndef? that's sad.)
 #define MAX_CENTER_TEXT_LENGTH 256
 #define COND_RUNE_STRENGTH TFCond:90
 #define BLITZKRIEG_COND_CRIT TFCond_HalloweenCritCandy // this one won't derp out for any reason, while medics can screw up Kritzkrieg
@@ -247,8 +245,11 @@ new Float:Blitz_MoveReviveMarkerAt[MAX_PLAYERS_ARRAY];
 
 // Integration Mode (Wolvan's revive markers plugin)
 #if defined _revivemarkers_included_
-bool IntegrationMode = false, SetVis4All = false, SetVis4Hale = false, UnRestrictRevives = false;
-int SetOtherTeam = 0;
+new bool:IntegrationMode = false;
+new Handle:cvarHaleVisibility, cvalHaleVisibility;
+new Handle:cvarTeamRestrict, cvalTeamRestrict;
+new Handle:cvarVisibility, cvalVisibility;
+new Handle:cvarNoRestrict, cvalNoRestrict;
 #endif
 
 // Version Number
@@ -605,13 +606,7 @@ public OnPluginStart2()
 			ChangeClass[i] = false;
 		}
 	}
-	#if defined _updater_included
-	if (LibraryExists("updater"))
-    {
-		Updater_AddPlugin(UPDATE_URL);
-	}
-	#endif
-	
+
 	// sarysa 2015-03-25, this is the first place sounds get precached.
 	// note that this sometimes precaches here will fail when the server is first started.
 	// this is mainly a problem with old forks of FF2, like VSP and DISC-FF
@@ -938,80 +933,41 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 			#if defined _revivemarkers_included_
 			if(IntegrationMode)
 			{
+				// Convars for Wolvan's revive markers plugin
+				cvarHaleVisibility = FindConVar("revivemarkers_show_markers_for_hale");
+				cvalHaleVisibility = GetConVarInt(cvarHaleVisibility);
+				cvarTeamRestrict = FindConVar("revivemarkers_drop_for_one_team");
+				cvalTeamRestrict = GetConVarInt(cvarTeamRestrict);
+				cvarVisibility = FindConVar("revivemarkers_visible_for_medics");
+				cvalVisibility = GetConVarInt(cvarVisibility);
+				cvarNoRestrict = FindConVar("revivemarkers_admin_only");
+				cvalNoRestrict = GetConVarInt(cvarNoRestrict);
+	
 				switch(allowrevive)
 				{
-					case -1, 0:
-					{
-							// NOOP
-					}
-					default: SetReviveCount(allowrevive);
+					case -1, 0: CPrintToChatAll("{blue} You have unlimited revives");
+					default: SetReviveCount(allowrevive), CPrintToChatAll("{red} You can only be revived %i times", allowrevive);
 				}
 						
-				switch(GetConVarInt(FindConVar("revivemarkers_visible_for_medics")))
+				switch(cvalVisibility)
 				{
-					case 1:
-					{	
-						SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 0);
-						SetVis4All = true;
-					}
-					case 0: SetVis4All = false;
+					case 1: SetConVarInt(cvarVisibility, 0);
+				}
+				
+				switch(cvalHaleVisibility)
+				{
+					case 0: SetConVarInt(cvarHaleVisibility, 1);
 				}
 						
-				switch(GetConVarInt(FindConVar("revivemarkers_show_markers_for_hale")))
+				switch(cvalNoRestrict)
 				{
-					case 1: SetVis4Hale = false;
-					case 0:
-					{
-						SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 1);
-						SetVis4Hale = true;
-					}
-				}
-						
-				switch(GetConVarInt(FindConVar("revivemarkers_admin_only")))
-				{
-					case 1:
-					{
-						SetConVarInt(FindConVar("revivemarkers_admin_only"), 0);
-						UnRestrictRevives = true;
-					}
-					case 0: UnRestrictRevives = false;	
+					case 1: SetConVarInt(cvarNoRestrict, 0);
 				}
 								
 				switch(FF2_GetBossTeam())
 				{ 
-					case 2: // Bossteam = RED Team
-					{
-						if(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")) != 2)
-						{
-							switch(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")))
-							{
-								case 0: SetOtherTeam = 1;
-								case 1: SetOtherTeam = 2;
-							}
-							SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);
-						}
-						else
-						{
-							SetOtherTeam = 0;
-						}
-					}
-							
-					case 3: // Bossteam = BLU Team
-					{
-						if(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")) != 1)
-						{
-							switch(GetConVarInt(FindConVar("revivemarkers_drop_for_one_team")))
-							{
-								case 0: SetOtherTeam = 1;
-								case 2: SetOtherTeam = 3;
-							}
-							SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
-						}
-						else
-						{
-							SetOtherTeam = 0;
-						}
-					}
+					case 2: if(cvalTeamRestrict != 2) SetConVarInt(cvarTeamRestrict, 2);
+					case 3: if(cvalTeamRestrict != 1) SetConVarInt(cvarTeamRestrict, 1);
 				}
 				setDecayTime(decaytime);
 			}
@@ -1129,7 +1085,7 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 
 		if (GetEventInt(event, "winning_team") == FF2_GetBossTeam())
 			BlitzIsWinner = true;
-		else
+		else if (GetEventInt(event, "winning_team") == ((FF2_GetBossTeam()==_:TFTeam_Blue) ? (_:TFTeam_Red) : (_:TFTeam_Blue)))
 			BlitzIsWinner = false;
 		CreateTimer(5.0, RoundResultSound, _, TIMER_FLAG_NO_MAPCHANGE); // sarysa: kept this one around, but fixed param #4 to be the no mapchange flag
 		
@@ -1143,46 +1099,12 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 		}
 
 		#if defined _revivemarkers_included_
+		if(IntegrationMode)
 		{
-			if(IntegrationMode)
-			{
-				if(SetVis4All)
-				{
-					SetConVarInt(FindConVar("revivemarkers_visible_for_medics"), 1);
-					SetVis4All = false;
-				}
-				
-				if(SetVis4Hale)
-				{
-					SetConVarInt(FindConVar("revivemarkers_show_markers_for_hale"), 0);
-					SetVis4Hale = false;
-				}
-				
-				switch(SetOtherTeam)
-				{
-					case 1:
-					{
-						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 0);
-					}
-					case 2:
-					{
-						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 1);
-					}	
-					case 3:
-					{
-						SetConVarInt(FindConVar("revivemarkers_drop_for_one_team"), 2);	
-					}
-				}	
-			
-				if(SetOtherTeam)
-					SetOtherTeam = 0;
-					
-				if(UnRestrictRevives)
-				{
-					SetConVarInt(FindConVar("revivemarkers_admin_only"), 1);
-					UnRestrictRevives = false;
-				}
-			}
+			SetConVarInt(cvarHaleVisibility, cvalHaleVisibility);
+			SetConVarInt(cvarVisibility, cvalVisibility);
+			SetConVarInt(cvarNoRestrict, cvalNoRestrict);
+			SetConVarInt(cvarTeamRestrict, cvalTeamRestrict);
 		}
 		#endif
 	}
@@ -1298,7 +1220,7 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 				case 1:
 					SetAmmo(Boss, TFWeaponSlot_Primary,999999);
 				case 0:
-					SetAmmo(Boss, TFWeaponSlot_Primary,blitzkriegrage);
+					SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
 			}
 			switch(voicelines)
 			{
@@ -2685,24 +2607,24 @@ public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 	if (client == dBoss)
 		return; // sarysa, fix an error when the hale loses
 		
+	if(allowrevive != 0 && FF2_GetBossIndex(client) == -1 && !(GetEventInt(event, "death_flags") & TF_DEATHFLAG_DEADRINGER)) // -1 means unlimited revives, any value greater than 0 sets a revive limit
+	{
+		#if defined _revivemarkers_included_
+		if(IntegrationMode)
+			SpawnRMarker(client);
+		else	
+			DropReviveMarker(client);
+		#else
+			DropReviveMarker(client);
+		#endif
+	}
+	
 	new String:weapon[50];
 	GetEventString(event, "weapon", weapon, sizeof(weapon));
 	new aBoss=FF2_GetBossIndex(attacker);
 	new vBoss=FF2_GetBossIndex(client);
 	if(aBoss!=-1 || vBoss!=-1)
-	{
-		if((attacker!=client || attacker==client) && allowrevive != 0 && (FF2_GetBossIndex(client) == -1 || GetClientTeam(client) != FF2_GetBossTeam())) // -1 means unlimited revives, any value greater than 0 sets a revive limit
-		{
-			#if defined _revivemarkers_included_
-				if(IntegrationMode)
-					SpawnRMarker(client);
-				else	
-					DropReviveMarker(client);
-			#else
-				DropReviveMarker(client);
-			#endif
-		}
-		
+	{		
 		if(StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
 		{
 			SetEventString(event, "weapon", "firedeath");
@@ -2765,7 +2687,7 @@ DropReviveMarker(client)
 			{
 				DropReanimator(client);
 				revivecount[client]++;
-				PrintHintText(client, "You have used %i of %i your available times you can be revived", revivecount[client], allowrevive);
+				PrintHintText(client, "You have used %i of %i revive marker drops", revivecount[client], allowrevive);
 			}
 		}
 	}
