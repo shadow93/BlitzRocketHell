@@ -258,7 +258,7 @@ new Handle:cvarNoRestrict, cvalNoRestrict;
 
 // Version Number
 #define MAJOR_REVISION "2"
-#define MINOR_REVISION "3"
+#define MINOR_REVISION "3a"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
@@ -1422,12 +1422,9 @@ RandomDanmaku(client, difficulty)
 	
 	switch(index)
 	{
-		case 127:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_directhit");
-		case 1104:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_airstrike");
-		default:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher");
+		case 127: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_directhit");
+		case 1104: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_airstrike");
+		default: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher");
 	}
 	
 	TF2Items_SetItemIndex(hItem, index);
@@ -1547,12 +1544,12 @@ RandomDanmaku(client, difficulty)
 		new Float:radius = 1.0;
 		switch(weapondifficulty)
 		{
-			case 420: radius = BMO_RocketRadius[9];
-			case 777: radius = BMO_RocketRadius[10];
-			case 999: radius = BMO_RocketRadius[11];
-			case 1337: radius = BMO_RocketRadius[12];
-			case 9001: radius = BMO_RocketRadius[13];
-			default: radius = BMO_RocketRadius[weapondifficulty-1];
+			case 420: radius = 5.2;
+			case 777: radius = 8.77;
+			case 999: radius = 10.99;
+			case 1337: radius = 14.37;
+			case 9001: radius = 100.01;
+			default: radius = (weapondifficulty == 1 ? 0.5 : ((float(weapondifficulty)-1)/float(weapondifficulty)));
 		}
 		if (BMO_Flags & BMO_FLAG_STACK_RADIUS)
 		{
@@ -1641,14 +1638,14 @@ CheckWeapons(client)
 			case 15, 41, 202, 298, 654, 793, 802, 850, 882, 891, 900, 909, 958, 967: // Miniguns
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_minigun", 15, 5, 10, "375 ; 50");
+				weapon=SpawnWeapon(client, "tf_weapon_minigun", index, 5, 10, "375 ; 50");
 				CPrintToChat(client, "Minigun:");
 				CPrintToChat(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use.");
 			}
 			case 18, 205, 237, 513, 658, 800, 809, 889, 898, 907, 916, 965, 974: // For other rocket launcher reskins
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 5, 10, "138 ; 0.70 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 4 ; 65 ; 1.30 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", index, 5, 10, "138 ; 0.70 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 4 ; 65 ; 1.30 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
 				CPrintToChat(client, "Rocket Launcher:");
 				CPrintToChat(client, "{blue}+100& Clip Size");
 				CPrintToChat(client, "{blue}+75% Faster firing speed");
@@ -1664,7 +1661,7 @@ CheckWeapons(client)
 			case 19, 206, 1007: // Grenade Launcher, Festive Grenade Launcher
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_grenadelauncher", 19, 5, 10, "2 ; 1.15 ; 4 ; 3 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4.5 ; 470 ; 0.75");
+				weapon=SpawnWeapon(client, "tf_weapon_grenadelauncher", index, 5, 10, "2 ; 1.15 ; 4 ; 3 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4.5 ; 470 ; 0.75");
 				CPrintToChat(client, "Grenade Launcher:");
 				CPrintToChat(client, "{blue}+15% Damage bonus");
 				CPrintToChat(client, "{blue}+200% Clip Size");
@@ -1694,7 +1691,7 @@ CheckWeapons(client)
 			case 228, 1085: // Black Box, Festive Black Box
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 228, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", index, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
 				CPrintToChat(client, "Black Box:");
 				CPrintToChat(client, "{blue}+50% Clip Size");
 				CPrintToChat(client, "{blue}On-Hit: +5 Health");
@@ -1857,7 +1854,7 @@ CheckWeapons(client)
 			case 39, 351, 740, 1081: // Flaregun, Detonator, Scorch Shot & Festive Flare Gun
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, "tf_weapon_flaregun", 351, 5, 10, "25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
+				weapon=SpawnWeapon(client, "tf_weapon_flaregun", index, 5, 10, "25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
 				CPrintToChat(client, "Detonator:");
 				CPrintToChat(client, "{blue}Crits vs Burning Players");
 				CPrintToChat(client, "{blue}+450% self damage push force");
@@ -1867,14 +1864,14 @@ CheckWeapons(client)
 			case 42, 863, 1002: // Sandvich, Robo-Sandvich & Festive Sandvich
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);					
-				weapon=SpawnWeapon(client, "tf_weapon_lunchbox", 42, 5, 10, "144 ; 4 ; 278 ; 0.5");
+				weapon=SpawnWeapon(client, "tf_weapon_lunchbox", index, 5, 10, "144 ; 4 ; 278 ; 0.5");
 				CPrintToChat(client, "Sandvich:");
 				CPrintToChat(client, "{blue}+50% Faster Regen Rate");
 			}
 			case 129, 1001: // Buff Banner
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, "tf_weapon_buff_item", 129, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
+				weapon=SpawnWeapon(client, "tf_weapon_buff_item", index, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
 				CPrintToChat(client, "Buff Banner:");
 				CPrintToChat(client, "{blue}+150% longer buff duration");
 				CPrintToChat(client, "{blue}+50% max health");
@@ -1921,7 +1918,7 @@ CheckWeapons(client)
 			case 29, 35, 211, 411, 663, 796, 805, 885, 894, 903, 912, 961, 970, 998:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				SpawnWeapon(client, "tf_weapon_medigun", 29, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
+				SpawnWeapon(client, "tf_weapon_medigun", index, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
 				CPrintToChat(client, "Medigun:");
 				CPrintToChat(client, "{blue}Use +attack3 (default middle mouse button) to deploy projectile shield");
 				CPrintToChat(client, "{blue}Overheal Expert applied");
@@ -1974,7 +1971,7 @@ CheckWeapons(client)
 			case 25, 737:
 			{
 				TF2_RemoveWeaponSlot(client, 3);
-				SpawnWeapon(client, "tf_weapon_pda_engineer_build", 25, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
+				SpawnWeapon(client, "tf_weapon_pda_engineer_build", index, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
 				CPrintToChat(client, "Construction PDA:");
 				CPrintToChat(client, "{blue}Teleporters are bi-directional");
 				CPrintToChat(client, "{blue}+10 Metal regenerated every 5 seconds");
