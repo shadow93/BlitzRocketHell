@@ -258,7 +258,7 @@ new Handle:cvarNoRestrict, cvalNoRestrict;
 
 // Version Number
 #define MAJOR_REVISION "2"
-#define MINOR_REVISION "3a"
+#define MINOR_REVISION "3b"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 #define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
@@ -303,7 +303,7 @@ new String:BS_HelpSpy[MAX_CENTER_TEXT_LENGTH]; // arg16, string name: help_spy
  */
 #define BMO_STRING "blitzkrieg_misc_overrides"
 #define MAX_ROCKET_TYPES 10 // types of launchers
-#define MAX_ROCKET_LEVELS 9999 // difficulty levels
+#define MAX_ROCKET_LEVELS 15 // difficulty levels
 #define ARRAY_IDX_NORMAL 0
 #define ARRAY_IDX_BLITZKRIEG 1
 #define BMO_MEDIGUN_MEDIC 0
@@ -2408,15 +2408,19 @@ stock SpawnWeapon(client,String:name[],index,level,qual,String:att[], bool:isRoc
 		if (count <= 30)
 		{
 			new Float:radius = 1.0;
-			if (weapondifficulty >= 1 && weapondifficulty <= 419)
+			if (weapondifficulty >= 1 && weapondifficulty <= 11)
 				radius = BMO_RocketRadius[weapondifficulty-1];
-			else if (weapondifficulty >= 420 && weapondifficulty <= 1336)
-				radius = BMO_RocketRadius[9];
-			else if (weapondifficulty >= 1337 && weapondifficulty <= 9000)
+			else if (weapondifficulty >=12  && weapondifficulty <= 420)
 				radius = BMO_RocketRadius[10];
-			else if (weapondifficulty == 9001)
+			else if (weapondifficulty >=421  && weapondifficulty <= 777)
 				radius = BMO_RocketRadius[11];
-			
+			else if (weapondifficulty >=778  && weapondifficulty <= 999)
+				radius = BMO_RocketRadius[12];
+			else if (weapondifficulty >=1000  && weapondifficulty <= 1337)
+				radius = BMO_RocketRadius[13];
+			else if (weapondifficulty >=1338  && weapondifficulty <= 9001)
+				radius = BMO_RocketRadius[14];
+				
 			if (BMO_Flags & BMO_FLAG_STACK_RADIUS)
 			{
 				if (StrContains(name, "directhit") >= 0)
