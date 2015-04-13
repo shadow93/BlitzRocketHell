@@ -1,5 +1,6 @@
 /* 
-
+	ブリッツクリーグ
+	
 	SHADoW93's Project TF2Danmaku Presents:
 	
 	The Blitzkrieg - The original Rocket Hell FF2 Boss
@@ -91,24 +92,6 @@
 			arg10 - if this is 1, your clip is emptied upon teleport. really this feature is _only_ for blitzkrieg. at high difficulties without this you'd get cheap(er) kills.
 			arg11 - attack delay set on all weapons upon point teleport. again, mainly just for Blitzkrieg. won't do squat if he rages after.
 		
-		blitzkrieg_strings
-			arg1 - good_luck
-			arg2 - combatmode_nomelee
-			arg3 - combatmode_withmelee
-			arg4 - blitz_inactive
-			arg5 - blitz_inactive2
-			arg6 - blitz_difficulty
-			arg7 - blitz_difficulty2
-			arg8 - help_scout
-			arg9 - help_soldier
-			arg10 - help_pyro
-			arg11 - help_demo
-			arg12 - help_heavy
-			arg13 - help_engy
-			arg14 - help_medic
-			arg15 - help_sniper
-			arg16 - help_spy
-		
 		blitzkrieg_misc_overrides
 			arg1 - rocket model override
 			arg2 - rocket recolors, standard weapons
@@ -198,11 +181,15 @@
 new bool:RoundInProgress = false;
 new bool:PRINT_DEBUG_INFO = true;
 new bool:PRINT_DEBUG_SPAM = false;
+new bool: LoomynartyMusic = false;
 
 // back to shadow93's code
+#define PLAYERDEATH "freak_fortress_2/s93dm/dm_playerdeath.mp3"
 #define BLITZKRIEG_SND "mvm/mvm_tank_end.wav"
 #define MINIBLITZKRIEG_SND "mvm/mvm_tank_start.wav"
 #define OVER_9000	"saxton_hale/9000.wav"
+#define L00MYNARTY "freak_fortress_2/s93dm/dm_l33t.mp3"
+#define SM0K3W33D "freak_fortress_2/s93dm/dm_w33d.mp3"
 #define BLITZROUNDSTART "freak_fortress_2/s93dm/eog_intro.mp3"
 #define BLITZROUNDEND	"freak_fortress_2/s93dm/eog_outtro.mp3"
 
@@ -214,6 +201,26 @@ new bool:PRINT_DEBUG_SPAM = false;
 #define	MAX_EDICT_BITS	11
 #define	MAX_EDICTS		(1 << MAX_EDICT_BITS)
 new rBounce[MAX_EDICTS], rMaxBounceCount[MAX_EDICTS], rMaxBounces = 0;
+
+// Version Number
+#define MAJOR_REVISION "2"
+#define MINOR_REVISION "4"
+//#define PATCH_REVISION "0"
+#define DEV_REVISION "Beta"
+#define BUILD_REVISION "(Experimental)"
+
+#if !defined PATCH_REVISION
+	#define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
+#else
+	#define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..."."...PATCH_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
+#endif
+
+public Plugin:myinfo = {
+	name = "Freak Fortress 2: The Blitzkrieg",
+	author = "SHADoW NiNE TR3S, sarysa",
+	description="Projectile Hell (TF2Danmaku)",
+	version=PLUGIN_VERSION,
+};
 
 
 //Other Stuff
@@ -240,8 +247,7 @@ new decaytime;
 new reviveMarker[MAXPLAYERS+1];
 new bool:ChangeClass[MAXPLAYERS+1] = { false, ... };
 new currentTeam[MAXPLAYERS+1] = {0, ... };
-new Float:Blitz_RemoveReviveMarkerAt[MAX_PLAYERS_ARRAY];
-new Float:Blitz_MoveReviveMarkerAt[MAX_PLAYERS_ARRAY];
+new Float:Blitz_LastPlayerPos[MAX_PLAYERS_ARRAY][3];
 
 // Integration Mode (Wolvan's revive markers plugin)
 #if defined _revivemarkers_included_
@@ -252,54 +258,23 @@ new Handle:cvarVisibility, cvalVisibility;
 new Handle:cvarNoRestrict, cvalNoRestrict;
 #endif
 
-// Version Number
-#define MAJOR_REVISION "2"
-#define MINOR_REVISION "3"
-#define DEV_REVISION "Beta"
-#define BUILD_REVISION "(Experimental)"
-#define PLUGIN_VERSION MAJOR_REVISION..."."...MINOR_REVISION..." "...DEV_REVISION..." "...BUILD_REVISION
-
-public Plugin:myinfo = {
-	name = "Freak Fortress 2: The Blitzkrieg",
-	author = "SHADoW NiNE TR3S, sarysa",
-	description="Projectile Hell (TF2Danmaku)",
-	version=PLUGIN_VERSION,
-};
-
 // many, many timer replacements
 new Float:Blitz_EndCrocketHellAt;
 new Float:Blitz_PostSetupAt;
 new Float:Blitz_AdminTauntAt;
 new Float:Blitz_RemoveUberAt;
 new Float:Blitz_ReverifyWeaponsAt[MAX_PLAYERS_ARRAY];
+new Float:Blitz_VerifyMedigunAt[MAX_PLAYERS_ARRAY];
+new Float:Blitz_RemoveReviveMarkerAt[MAX_PLAYERS_ARRAY];
+new Float:Blitz_MoveReviveMarkerAt[MAX_PLAYERS_ARRAY];
 
-/**
- * Blitzkrieg Strings: sarysa 2015-03-25: strings moved into boss config, and preloaded
- */
-#define BS_STRING "blitzkrieg_strings"
-new String:BS_GoodLuck[MAX_CENTER_TEXT_LENGTH]; // arg1, string name: good_luck
-new String:BS_CombatModeNoMelee[MAX_CENTER_TEXT_LENGTH]; // arg2, string name: combatmode_nomelee
-new String:BS_CombatModeWithMelee[MAX_CENTER_TEXT_LENGTH]; // arg3, string name: combatmode_withmelee
-new String:BS_BlitzInactive[MAX_CENTER_TEXT_LENGTH]; // arg4, string name: blitz_inactive
-new String:BS_BlitzInactive2[MAX_CENTER_TEXT_LENGTH]; //arg5, string name: blitz_inactive2
-new String:BS_BlitzDifficulty[MAX_CENTER_TEXT_LENGTH]; // arg6, string name: blitz_difficulty
-new String:BS_BlitzDifficulty2[MAX_CENTER_TEXT_LENGTH]; // arg7, string name: blitz_difficulty2
-new String:BS_HelpScout[MAX_CENTER_TEXT_LENGTH]; // arg8, string name: help_scout
-new String:BS_HelpSoldier[MAX_CENTER_TEXT_LENGTH]; // arg9, string name: help_soldier
-new String:BS_HelpPyro[MAX_CENTER_TEXT_LENGTH]; // arg10, string name: help_pyro
-new String:BS_HelpDemo[MAX_CENTER_TEXT_LENGTH]; // arg11, string name: help_demo
-new String:BS_HelpHeavy[MAX_CENTER_TEXT_LENGTH]; // arg12, string name: help_heavy
-new String:BS_HelpEngie[MAX_CENTER_TEXT_LENGTH]; // arg13, string name: help_engy
-new String:BS_HelpMedic[MAX_CENTER_TEXT_LENGTH]; // arg14, string name: help_medic
-new String:BS_HelpSniper[MAX_CENTER_TEXT_LENGTH]; // arg15, string name: help_sniper
-new String:BS_HelpSpy[MAX_CENTER_TEXT_LENGTH]; // arg16, string name: help_spy
 
 /**
  * Blitzkrieg Misc Overrides
  */
 #define BMO_STRING "blitzkrieg_misc_overrides"
 #define MAX_ROCKET_TYPES 10 // types of launchers
-#define MAX_ROCKET_LEVELS 12 // difficulty levels
+#define MAX_ROCKET_LEVELS 15 // difficulty levels
 #define ARRAY_IDX_NORMAL 0
 #define ARRAY_IDX_BLITZKRIEG 1
 #define BMO_MEDIGUN_MEDIC 0
@@ -318,12 +293,17 @@ new String:BS_HelpSpy[MAX_CENTER_TEXT_LENGTH]; // arg16, string name: help_spy
 #define BMO_FLAG_NO_END_ADMIN_MESSAGES 0x0400
 #define BMO_FLAG_NO_CLASS_MESSAGES 0x0800
 #define BMO_FLAG_NO_GOOMBAS 0x1000
+#define BMO_FLAG_NO_DEMOKNIGHT_FALL_DAMAGE 0x2000
+#define BMO_FLAG_DISPLAY_TIMER_HUD 0x4000
+#define BMO_FLAG_VSP_SWORD_WORKAROUND 0x8000
 #define MAX_PENDING_ROCKETS 10
 new bool:BMO_ActiveThisRound = false;
 new bool:BMO_CurrentIsBlizkrieg;
 new BMO_CurrentRocketType;
 new BMO_PendingRocketEntRefs[MAX_PENDING_ROCKETS];
 new BMO_MedicType[MAX_PLAYERS_ARRAY];
+new Float:BMO_UpdateTimerHUDAt;
+new Float:BMO_RoundEndsAt; // internal, based on arg16
 new BMO_ModelOverrideIdx; // arg1
 new BMO_Recolors[2][MAX_ROCKET_TYPES]; // arg2 and arg3
 new Float:BMO_CritDamageMultiplier; // arg4
@@ -379,6 +359,26 @@ new bool:SPT_PreserveMomentum[MAX_PLAYERS_ARRAY]; // arg8
 new bool:SPT_AddCharges[MAX_PLAYERS_ARRAY]; // arg9
 new bool:SPT_EmptyClipOnTeleport[MAX_PLAYERS_ARRAY]; // arg10
 new Float:SPT_AttackDelayOnTeleport[MAX_PLAYERS_ARRAY]; // arg11
+/**
+ * Blitzkrieg Strings: sarysa 2015-03-25: strings moved into boss config, and preloaded
+ */
+#define BS_STRING "blitzkrieg_strings"
+new String:BS_GoodLuck[MAX_CENTER_TEXT_LENGTH]; // arg1, string name: good_luck
+new String:BS_CombatModeNoMelee[MAX_CENTER_TEXT_LENGTH]; // arg2, string name: combatmode_nomelee
+new String:BS_CombatModeWithMelee[MAX_CENTER_TEXT_LENGTH]; // arg3, string name: combatmode_withmelee
+new String:BS_BlitzInactive[MAX_CENTER_TEXT_LENGTH]; // arg4, string name: blitz_inactive
+new String:BS_BlitzInactive2[MAX_CENTER_TEXT_LENGTH]; //arg5, string name: blitz_inactive2
+new String:BS_BlitzDifficulty[MAX_CENTER_TEXT_LENGTH]; // arg6, string name: blitz_difficulty
+new String:BS_BlitzDifficulty2[MAX_CENTER_TEXT_LENGTH]; // arg7, string name: blitz_difficulty2
+new String:BS_HelpScout[MAX_CENTER_TEXT_LENGTH]; // arg8, string name: help_scout
+new String:BS_HelpSoldier[MAX_CENTER_TEXT_LENGTH]; // arg9, string name: help_soldier
+new String:BS_HelpPyro[MAX_CENTER_TEXT_LENGTH]; // arg10, string name: help_pyro
+new String:BS_HelpDemo[MAX_CENTER_TEXT_LENGTH]; // arg11, string name: help_demo
+new String:BS_HelpHeavy[MAX_CENTER_TEXT_LENGTH]; // arg12, string name: help_heavy
+new String:BS_HelpEngie[MAX_CENTER_TEXT_LENGTH]; // arg13, string name: help_engy
+new String:BS_HelpMedic[MAX_CENTER_TEXT_LENGTH]; // arg14, string name: help_medic
+new String:BS_HelpSniper[MAX_CENTER_TEXT_LENGTH]; // arg15, string name: help_sniper
+new String:BS_HelpSpy[MAX_CENTER_TEXT_LENGTH]; // arg16, string name: help_spy
 
 // Blitz in Medic mode
 static const String:BlitzMedic[][] = {
@@ -519,6 +519,9 @@ public Blitzkrieg_PrecacheSounds() // sarysa 2015-03-25, OnMapStart() NEVER work
 	PrecacheSound(BLITZROUNDSTART,true);
 	PrecacheSound(BLITZROUNDEND, true);
 	PrecacheSound(OVER_9000, true);
+	PrecacheSound(PLAYERDEATH, true);
+	PrecacheSound(L00MYNARTY, true);
+	PrecacheSound(SM0K3W33D, true);
 	// RAGE GENERIC ALERTS
 	PrecacheSound(BLITZKRIEG_SND,true);
 	PrecacheSound(MINIBLITZKRIEG_SND,true);
@@ -606,7 +609,7 @@ public OnPluginStart2()
 			ChangeClass[i] = false;
 		}
 	}
-
+	
 	// sarysa 2015-03-25, this is the first place sounds get precached.
 	// note that this sometimes precaches here will fail when the server is first started.
 	// this is mainly a problem with old forks of FF2, like VSP and DISC-FF
@@ -719,6 +722,8 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	allowrevive = 0;
 	barrage = false;
 	bRdm = false;
+	BMO_UpdateTimerHUDAt = FAR_FUTURE;
+	BMO_RoundEndsAt = FAR_FUTURE;
 	blitzisboss = false;
 	Blitz_EndCrocketHellAt = FAR_FUTURE;
 	Blitz_PostSetupAt = FAR_FUTURE;
@@ -802,6 +807,12 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 				BMO_FlatGoombaDamage = FF2_GetAbilityArgumentFloat(bossIdx, this_plugin_name, BMO_STRING, 13);
 				BMO_GoombaDamageFactor = FF2_GetAbilityArgumentFloat(bossIdx, this_plugin_name, BMO_STRING, 14);
 				ReadCenterText(bossIdx, BMO_STRING, 15, BMO_MedicExploitAlert);
+				new Float:roundLimit = FF2_GetAbilityArgumentFloat(bossIdx, this_plugin_name, BMO_STRING, 16);
+				if (roundLimit > 0.0)
+				{
+					BMO_RoundEndsAt = GetEngineTime() + roundLimit;
+					BMO_UpdateTimerHUDAt = GetEngineTime();
+				}
 
 				BMO_Flags = ReadHexOrDecString(bossIdx, BMO_STRING, 19);
 
@@ -945,7 +956,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	
 				switch(allowrevive)
 				{
-					case -1, 0: CPrintToChatAll("{blue} You have unlimited revives");
+					case -1, 0: CPrintToChatAll((allowrevive==-1 ? "{blue} You have unlimited revives" : "{red} Revive markers disabled"));
 					default: SetReviveCount(allowrevive), CPrintToChatAll("{red} You can only be revived %i times", allowrevive);
 				}
 						
@@ -975,8 +986,8 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 			
 			rMaxBounces = FF2_GetAbilityArgument(0,this_plugin_name,"blitzkrieg_config", 14); // Projectile Bounce
 
-			DisplayCurrentDifficulty(dBoss);
 			
+			DisplayCurrentDifficulty(dBoss);
 			if(lvlup)
 				Blitz_AdminTauntAt = GetEngineTime() + 6.0;
 		}
@@ -1013,7 +1024,7 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 			else
 			{
 				SPT_KeyToUse[clientIdx] = IN_RELOAD;
-				PrintCenterText(clientIdx, "Invalid key specified for point teleport. Using RELOAD.\nNotify your admin!");
+				PrintHintText(clientIdx, "Invalid key specified for point teleport. Using RELOAD.\nNotify your admin!");
 			}
 			SPT_NumSkills[clientIdx] = FF2_GetAbilityArgument(bossIdx, this_plugin_name, SPT_STRING, 2);
 			SPT_MaxDistance[clientIdx] = FF2_GetAbilityArgumentFloat(bossIdx, this_plugin_name, SPT_STRING, 3);
@@ -1048,9 +1059,13 @@ public Action:OnRoundStart(Handle:event, const String:name[], bool:dontBroadcast
 	{
 		for (new clientIdx = 1; clientIdx < MAX_PLAYERS; clientIdx++)
 		{
+			// gotta initialize this, in case someone ducks until they die (lol)
+			if (IsLivingPlayer(clientIdx))
+				GetEntPropVector(clientIdx, Prop_Send, "m_vecOrigin", Blitz_LastPlayerPos[clientIdx]);
 			Blitz_RemoveReviveMarkerAt[clientIdx] = FAR_FUTURE;
 			Blitz_MoveReviveMarkerAt[clientIdx] = FAR_FUTURE;
 			Blitz_ReverifyWeaponsAt[clientIdx] = FAR_FUTURE;
+			Blitz_VerifyMedigunAt[clientIdx] = FAR_FUTURE;
 			reviveMarker[clientIdx] = INVALID_ENTREF;
 		}
 	}
@@ -1082,7 +1097,7 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 		bRdm = false;
 		blitzisboss = false;
 		Blitz_RemoveHooks();
-
+		
 		if (GetEventInt(event, "winning_team") == FF2_GetBossTeam())
 			BlitzIsWinner = true;
 		else if (GetEventInt(event, "winning_team") == ((FF2_GetBossTeam()==_:TFTeam_Blue) ? (_:TFTeam_Red) : (_:TFTeam_Blue)))
@@ -1097,7 +1112,7 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 			
 			RemoveReanimator(clientIdx);
 		}
-
+		
 		#if defined _revivemarkers_included_
 		if(IntegrationMode)
 		{
@@ -1107,6 +1122,7 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 			SetConVarInt(cvarTeamRestrict, cvalTeamRestrict);
 		}
 		#endif
+		
 	}
 }
 
@@ -1137,30 +1153,33 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 			TF2_AddCondition(Boss,BLITZKRIEG_COND_CRIT,FF2_GetAbilityArgumentFloat(boss,this_plugin_name,ability_name,2,5.0)); // Kritzkrieg
 			if(lvlup)
 			{
+				LoomynartyMusic = true;
 				if(bRdm && lvlup==1)
 					weapondifficulty=GetRandomInt(minlvl,maxlvl);
 				else
 				{
-					switch(weapondifficulty)
+					// so sourcemod does switches differently. no break required. who'd have thought. - sarysa
+					if ((BMO_Flags & BMO_FLAG_BLOCK_NOVELTY_DIFFICULTY) == 0)
 					{
-						case 9:
-							// so sourcemod does switches differently. no break required. who'd have thought. - sarysa
-							if ((BMO_Flags & BMO_FLAG_BLOCK_NOVELTY_DIFFICULTY) == 0)
-								weapondifficulty=420;
-						case 420:
-							weapondifficulty=1337;
-						case 1337:
-							weapondifficulty=9001;
-						case 9001:
+						switch(weapondifficulty)
 						{
-							if(bRdm)
-								weapondifficulty=minlvl;
-							else
-								weapondifficulty=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 1, 2);
+							case 9: weapondifficulty=420;
+							case 420: weapondifficulty=777;
+							case 777: weapondifficulty=999;
+							case 999: weapondifficulty=1337;
+							case 1337: weapondifficulty=9001;
+							case 9001:
+							{
+								if(bRdm)
+									weapondifficulty=minlvl;
+								else
+									weapondifficulty=FF2_GetAbilityArgument(boss,this_plugin_name,"blitzkrieg_config", 1, 2);
+							}
+							default: weapondifficulty=weapondifficulty+1;
 						}
-						default:
-							weapondifficulty=weapondifficulty+1;
 					}
+					else
+						weapondifficulty=weapondifficulty+1;
 				}
 				DisplayCurrentDifficulty(Boss);		
 			}
@@ -1214,14 +1233,8 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 				EmitSoundToAll(IsRaging, Boss);	
 			// Weapon switch depending if Blitzkrieg Barrage is active or not
 			RandomDanmaku(Boss, weapondifficulty);
-
-			switch(combatstyle)
-			{
-				case 1:
-					SetAmmo(Boss, TFWeaponSlot_Primary,999999);
-				case 0:
-					SetAmmo(Boss, TFWeaponSlot_Primary,miniblitzkriegrage);
-			}
+			SetAmmo(Boss, TFWeaponSlot_Primary,(combatstyle == 1 ? 999999 : miniblitzkriegrage));
+			
 			switch(voicelines)
 			{
 				case 1:
@@ -1330,13 +1343,8 @@ PlotTwist(client)
 	{
 		if ((BMO_Flags & BMO_FLAG_KEEP_PLAYER_CLASS) == 0)
 		{
-			switch (GetRandomInt(0,1))
-			{
-				case 0:
-					TF2_SetPlayerClass(client, TFClass_Medic);
-				case 1:
-					TF2_SetPlayerClass(client, TFClass_Soldier);
-			}
+			new RandomClass = GetRandomInt(0,1);
+			TF2_SetPlayerClass(client, (RandomClass == 0 ? TFClass_Medic : TFClass_Soldier));
 		}
 	}
 	if (BMO_Flags & BMO_FLAG_KEEP_MELEE)
@@ -1353,8 +1361,8 @@ PlotTwist(client)
 	{
 		SetVariantString("models/freak_fortress_2/shadow93/dmedic/dmedic.mdl");
 		AcceptEntityInput(client, "SetCustomModel");
+		SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
 	}
-	SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
 	// Removing all wearables
 	new entity, owner;
 	while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
@@ -1366,63 +1374,33 @@ PlotTwist(client)
 	while((entity=FindEntityByClassname(entity, "tf_powerup_bottle"))!=-1)
 		if((owner=GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity"))<=MaxClients && owner>0 && GetClientTeam(owner)==FF2_GetBossTeam())
 			TF2_RemoveWearable(owner, entity);
-	// Restoring Melee (if using hybrid style), otherwise, giving Blitzkrieg just the death effect rocket launchers.
-	// Also restores his B.A.S.E. Jumper
+
 	if ((BMO_Flags & BMO_FLAG_NO_PARACHUTE) == 0)
 		SpawnWeapon(client, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
 
 	if(barrage || startmode)
 		RandomDanmaku(client, weapondifficulty);
 	
-	switch(combatstyle)
+	if(!combatstyle)
 	{
-		case 1:
-			SetAmmo(client, TFWeaponSlot_Primary,999999);
-		case 0:
+		if ((BMO_Flags & BMO_FLAG_KEEP_MELEE) == 0)
 		{
-			if ((BMO_Flags & BMO_FLAG_KEEP_MELEE) == 0)
+			switch(weapondifficulty)
 			{
-				switch(TF2_GetPlayerClass(client))
-				{
-					case 5: // Medic
-					{
-						switch(weapondifficulty)
-						{
-							case 420:
-								SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
-							case 1337:
-								SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 14.37 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-							case 9001:
-								SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 100 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 100 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-							default:
-								SpawnWeapon(client, "tf_weapon_knife", 1003, 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-						}
-					}
-					case 3: // Soldier
-					{
-						switch(weapondifficulty)
-						{
-							case 420:
-								SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 14.37 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
-							case 1337:
-								SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");
-							case 9001:
-								SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 100 ; 137 ; 100 ; 267 ; 1 ; 391 ; 100 ; 401 ; 100 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");
-							default:
-								SpawnWeapon(client, "tf_weapon_knife", 416, 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
-						}
-					}
-				}
+				case 420: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
+				case 777: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 8.77 ; 137 ; 8.77 ; 267 ; 1 ; 391 ; 8.77 ; 401 ; 8.77 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+				case 999: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 10.99 ; 137 ; 10.99 ; 267 ; 1 ; 391 ; 10.99 ; 401 ; 10.99 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+				case 1337: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 14.37 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+				case 9001: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 100 ; 137 ; 100 ; 267 ; 1 ; 391 ; 100 ; 401 ; 100 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
+				default: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
 			}
-			if(barrage)
-				SetAmmo(client, TFWeaponSlot_Primary,blitzkriegrage);
-			else
-				SetAmmo(client, TFWeaponSlot_Primary,miniblitzkriegrage);
 		}
-	}	
+	}
+	SetAmmo(client, TFWeaponSlot_Primary,(combatstyle==1 ? 999999 : (barrage == true ? blitzkriegrage : miniblitzkriegrage)));
+	
 }		
 
-// Client Actions
+// Weaponswitch
 
 RandomDanmaku(client, difficulty)
 {		
@@ -1448,12 +1426,9 @@ RandomDanmaku(client, difficulty)
 	
 	switch(index)
 	{
-		case 127:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_directhit");
-		case 1104:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_airstrike");
-		default:
-			TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher");
+		case 127: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_directhit");
+		case 1104: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher_airstrike");
+		default: TF2Items_SetClassname(hItem, "tf_weapon_rocketlauncher");
 	}
 	
 	TF2Items_SetItemIndex(hItem, index);
@@ -1527,6 +1502,8 @@ RandomDanmaku(client, difficulty)
 		}
 		case 420: RNGDamage = 5.20, RNGSpeed = 5.20; // MLG Pro W33D
 		case 1337: RNGDamage = 14.37, RNGSpeed = 14.37; // MLG Pro L33T
+		case 777: RNGDamage = 8.77, RNGSpeed = 8.77; // RAVIOLI RAVIOLI
+		case 999: RNGDamage = 10.99, RNGSpeed = 10.99; // D0NUT ST33L
 		case 9001: RNGDamage = 100.01, RNGSpeed = 100.01; // OVER 9000
 		default: RNGDamage = (float(difficulty))/GetRandomFloat(2.0,6.0), RNGSpeed = (float(difficulty))/GetRandomFloat(2.0,6.0); // Pure RNG
 		}
@@ -1539,7 +1516,7 @@ RandomDanmaku(client, difficulty)
 			case 7: RNGSpread = GetRandomFloat(5.0, 10.0); // Godlike
 			case 8: RNGSpread = GetRandomFloat(10.0, 20.0); // Rocket Hell
 			case 9: RNGSpread = GetRandomFloat(20.0, 30.0); // Total Blitzkrieg
-			case 420, 1337, 9001: RNGSpread = GetRandomFloat(30.0, 60.0); // Novelty Levels
+			case 420, 777, 999, 1337, 9001: RNGSpread = GetRandomFloat(30.0, 60.0); // Novelty Levels
 		}
 	}
 	else
@@ -1549,7 +1526,7 @@ RandomDanmaku(client, difficulty)
 			case 1,2,3,4: RNGSpread = GetRandomFloat(10.0, 20.0); // Easy - Difficult
 			case 5,6,7,8: RNGSpread = GetRandomFloat(20.0, 30.0); // Lunatic - Rocket Hell
 			case 9: RNGSpread = GetRandomFloat(30.0, 50.0); // Total Blitzkrieg
-			case 420, 1337, 9001: RNGSpread = GetRandomFloat(30.0, 60.0); // Novelty Levels
+			case 420, 777, 999, 1337, 9001: RNGSpread = GetRandomFloat(30.0, 60.0); // Novelty Levels
 		}
 	}
 	
@@ -1562,36 +1539,42 @@ RandomDanmaku(client, difficulty)
 	TF2Items_SetAttribute(hItem, 7, 4, GetRandomFloat(10.0, 60.0)); // Clip Size
 	TF2Items_SetAttribute(hItem, 8, 6, GetRandomFloat(0.0, 0.3)); // Fire rate bonus
 	TF2Items_SetAttribute(hItem, 9, 37, 0.0); // Cannot pick up ammo
-	
-	if(RNGDamage <= 1.0)
-		TF2Items_SetAttribute(hItem, 10, 1, RNGDamage); // Damage Penalty
-	else
-		TF2Items_SetAttribute(hItem, 10, 2, RNGDamage); // Damage Bonus	
+	TF2Items_SetAttribute(hItem, 10, (RNGDamage >= 1.0 ? 2 : 1), RNGDamage); // Damage Bonus/Penalty
+	TF2Items_SetAttribute(hItem, 11, (RNGSpeed >= 1.0 ? 103 : 104), RNGSpeed); // Speed Bonus/Penalty
+	TF2Items_SetAttribute(hItem, 12, (RNGSpread > 0 ? 411 : 269), (RNGSpread > 0 ? RNGSpread : 1.0)); // Spread/See Enemy Health
 		
-	if(RNGSpeed <= 1.0)
-		TF2Items_SetAttribute(hItem, 11, 104, RNGSpeed); // Speed Penalty
-	else
-		TF2Items_SetAttribute(hItem, 11, 103, RNGSpeed); // Speed Bonus	
-		
-	if(RNGSpread)
-		TF2Items_SetAttribute(hItem, 12, 411, RNGSpread); // Spread
-	else
-		TF2Items_SetAttribute(hItem, 12, 269, 1.0); // See Enemy Health on levels 1-4
-		
-	if(difficulty >=5) 
+	if (BMO_ActiveThisRound)
 	{
-		TF2Items_SetAttribute(hItem, 13, 208, 1.0); // Burn Players
-		TF2Items_SetAttribute(hItem, 14, 72, GetRandomFloat(0.1, 0.99)); // Burn Players
-		TF2Items_SetNumAttributes(hItem, 15);
+		new Float:radius = 1.0;
+		switch(weapondifficulty)
+		{
+			case 420: radius = 5.2;
+			case 777: radius = 8.77;
+			case 999: radius = 10.99;
+			case 1337: radius = 14.37;
+			case 9001: radius = 100.01;
+			default: radius = (weapondifficulty == 1 ? 0.5 : ((float(weapondifficulty)-1)/float(weapondifficulty)));
+		}
+		if (BMO_Flags & BMO_FLAG_STACK_RADIUS)
+		{
+			if (index == 127)
+				radius *= 0.3;
+			else if (index == 1104)
+				radius *= 0.85;
+		}
+		TF2Items_SetAttribute(hItem, 13, (radius >= 1.0 ? 99 : 100), radius); // Burn Players
 	}
-	else
-		TF2Items_SetNumAttributes(hItem, 13);
+	
+	if(difficulty >=5) 
+		TF2Items_SetAttribute(hItem, 14, 208, 1.0); // Burn Players
+	TF2Items_SetNumAttributes(hItem, (difficulty >= 5 ? 15 : 14));
 	
 	new iWeapon = TF2Items_GiveNamedItem(client, hItem);
 	CloseHandle(hItem);
 	EquipPlayerWeapon(client, iWeapon);
 	SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", iWeapon);
 }
+
 
 bool:BWO_CheckWeaponOverrides(clientIdx, weapon, slot)
 {
@@ -1613,9 +1596,17 @@ bool:BWO_CheckWeaponOverrides(clientIdx, weapon, slot)
 			}
 			else
 				TF2_RemoveWeaponSlot(clientIdx, slot);
-			weapon = SpawnWeapon(clientIdx, classname, BWO_WeaponIndexes[i], 5, 10, BWO_WeaponArgs[i]);
+				
+			if (BMO_Flags & BMO_FLAG_VSP_SWORD_WORKAROUND)
+			{
+				// I don't have the time or resources to figure out this problem gracefully
+				// so I need to switch weapon indices while keeping player's desired stats
+				if (weaponIdx == 404 || weaponIdx == 172) // persian, skullcutter
+					weaponIdx = 1082; // festive eyelander
+			}
+			weapon = SpawnWeapon(clientIdx, classname, weaponIdx, 5, 10, BWO_WeaponArgs[i]);
 			if (PRINT_DEBUG_INFO)
-				PrintToServer("[Blitzkrieg] [i=%d] Swapped out %d's weapon (%d)", i, clientIdx, weaponIdx);
+				PrintToServer("[Blitzkrieg] [i=%d] Swapped out %d's weapon (%d)", i, clientIdx, BWO_WeaponIndexes[i]);
 			return true;
 		}
 		else if (PRINT_DEBUG_SPAM)
@@ -1667,18 +1658,30 @@ CheckWeapons(client)
 			case 18, 205, 237, 513, 658, 800, 809, 889, 898, 907, 916, 965, 974: // For other rocket launcher reskins
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 5, 10, "138 ; 0.70 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 4 ; 65 ; 1.30 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
+				weapon=SpawnWeapon(client, "tf_weapon_rocketlauncher", 18, 5, 10, "1 ; 0.90 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 1.5 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
 				CPrintToChat(client, "Rocket Launcher:");
-				CPrintToChat(client, "{blue}+100& Clip Size");
+				CPrintToChat(client, "{blue}+100% Clip Size");
 				CPrintToChat(client, "{blue}+75% Faster firing speed");
-				CPrintToChat(client, "{blue}+300% self damage push force");
+				CPrintToChat(client, "{blue}+50% self damage push force");
 				CPrintToChat(client, "{blue}+500% max primary ammo on wearer");
 				CPrintToChat(client, "{blue}-70% Blast Damage from rocket jumps");
 				CPrintToChat(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds");
 				CPrintToChat(client, "{blue}Wearer never takes fall damage");
-				CPrintToChat(client, "{red}-30% Damage Penalty");
-				CPrintToChat(client, "{red}-30% explosive damage vulnerability on wearer");
+				CPrintToChat(client, "{red}-10% Damage Penalty");
 				CPrintToChat(client, "{red}No Random Critical Hits");
+			}
+			case 21, 208, 40, 215, 659, 741, 798, 807, 887, 896, 905, 914, 963, 972, 1146, 30474: // flamethrowers minus phlog
+			{
+				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
+				weapon=SpawnWeapon(client, "tf_weapon_flamethrower", 21, 5, 10, "2 ; 2.0 ; 162 ; 2.0 ; 255 ; 2.5 ; 164 ; 3.0 ; 362 ; 1 ; 173 ; 1.75 ; 178 ; 0.3");
+				CPrintToChat(client, "Flamethrower:");
+				CPrintToChat(client, "{blue}+100% Damage Bonus");
+				CPrintToChat(client, "{blue}+100% Flame Spread Area");
+				CPrintToChat(client, "{blue}+150% Airblast Push Force");
+				CPrintToChat(client, "{blue}+200% Flame Distance");
+				CPrintToChat(client, "{blue}70% Faster Weapon Switch");
+				CPrintToChat(client, "{blue}Always crits from behind");
+				CPrintToChat(client, "{red}+75% ammo consumed per second");
 			}
 			case 19, 206, 1007: // Grenade Launcher, Festive Grenade Launcher
 			{
@@ -1948,6 +1951,7 @@ CheckWeapons(client)
 				CPrintToChat(client, "{blue}+25% faster charge rate");
 				CPrintToChat(client, "{blue}+25% faster weapon switch");
 				CPrintToChat(client, "{blue}+50% overheal bonus");
+				Blitz_VerifyMedigunAt[client] = GetEngineTime() + 3.0;
 			}
 		}
 	}
@@ -2025,6 +2029,16 @@ CheckWeapons(client)
 					break; // easy way to avoid eating up all edicts. also, assuming each player only has stat-infused wearable.
 		}
 	}
+}
+
+public HealPlayer(clientIdx)
+{
+	// damnit valve, why is max health so useless.
+	// gotta go with the hack fix instead
+	new maxHealth = GetEntProp(clientIdx, Prop_Data, "m_iMaxHealth");
+	maxHealth += 100;
+	SetEntProp(clientIdx, Prop_Send, "m_iHealth", maxHealth);
+	SetEntProp(clientIdx, Prop_Data, "m_iHealth", maxHealth);
 }
 
 // Teleport Event
@@ -2159,6 +2173,9 @@ stock DropReanimator(client)
 		reviveMarker[client] = EntIndexToEntRef(marker);
 		Blitz_MoveReviveMarkerAt[client] = GetEngineTime() + 0.01;
 		Blitz_RemoveReviveMarkerAt[client] = GetEngineTime() + decaytime;
+		
+		if (PRINT_DEBUG_SPAM)
+			PrintToServer("[%d] Marker created at %f", client, GetEngineTime());
 	} 
 }
 
@@ -2184,9 +2201,15 @@ public MoveMarker(client)
 		return;
 	}
 
-	new Float:position[3];
-	GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
-	TeleportEntity(marker, position, NULL_VECTOR, NULL_VECTOR);
+	// must offset by 20, otherwise they can fall through the world
+	static Float:spawnPos[3];
+	spawnPos[0] = Blitz_LastPlayerPos[client][0];
+	spawnPos[1] = Blitz_LastPlayerPos[client][1];
+	spawnPos[2] = Blitz_LastPlayerPos[client][2] + 20.0;
+	TeleportEntity(marker, spawnPos, NULL_VECTOR, NULL_VECTOR);
+		
+	if (PRINT_DEBUG_SPAM)
+		PrintToServer("[%d] Marker moved at %f", client, GetEngineTime());
 }
 
 stock RemoveReanimator(client)
@@ -2198,6 +2221,9 @@ stock RemoveReanimator(client)
 		new marker = EntRefToEntIndex(reviveMarker[client]);
 		if (IsValidEntity(marker) && marker >= MAX_PLAYERS)
 			AcceptEntityInput(marker, "Kill");
+		
+		if (PRINT_DEBUG_SPAM)
+			PrintToServer("[%d] Marker destroyed at %f", client, GetEngineTime());
 	}
 	Blitz_RemoveReviveMarkerAt[client] = FAR_FUTURE;
 	Blitz_MoveReviveMarkerAt[client] = FAR_FUTURE;
@@ -2270,9 +2296,9 @@ public Action:OnPlayerInventory(Handle:event, const String:name[], bool:dontBroa
 		new client = GetClientOfUserId(GetEventInt(event, "userid"));
 		if(customweapons)
 		{
-			if(IsClientInGame(client) && IsValidClient(client) && GetClientTeam(client)!=FF2_GetBossTeam())
+			if(IsLivingPlayer(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 			{		
-				CheckWeapons(client);
+				//CheckWeapons(client);
 				PlayerHelpPanel(client);
 			}
 		}
@@ -2290,16 +2316,11 @@ public Action:OnChangeClass(Handle:event, const String:name[], bool:dontbroadcas
 	return Plugin_Continue;
 }
 
-public RemoveReviveMarker(client)
-{
-	RemoveReanimator(client);
-}
-
 public OnClientDisconnect(client) 
 {
 	if(blitzisboss)
 	{
-		if(allowrevive)
+		if(allowrevive!=0)
 		{
 			#if defined _revivemarkers_included_
 			{
@@ -2345,35 +2366,42 @@ DisplayCurrentDifficulty(client)
 	new d_Boss=GetClientOfUserId(FF2_GetBossUserId(client));
 	FF2_GetBossSpecial(d_Boss, spcl, sizeof(spcl));
 	switch(weapondifficulty)
-	{
-		case 1:
-			bDiff="Easy";
-		case 2:
-			bDiff="Normal";
-		case 3:
-			bDiff="Intermediate";
-		case 4:
-			bDiff="Difficult";
-		case 5:
-			bDiff="Lunatic";
-		case 6:
-			bDiff="Insane";
-		case 7:
-			bDiff="Godlike";
-		case 8:
-			bDiff="Rocket Hell";
-		case 9:
-			bDiff="Total Blitzkrieg";
-		case 420:
-			bDiff="MLG Pro - Level 420";
-		case 1337:
-			bDiff="MLG Pro - Level 1337";
+	{	
+		case 0: bDiff="BAKA!!!!!";
+		case 1: bDiff="Easy";
+		case 2: bDiff="Normal";
+		case 3: bDiff="Intermediate";
+		case 4: bDiff="Difficult";
+		case 5: bDiff="Lunatic";
+		case 6: bDiff="Insane";
+		case 7: bDiff="Godlike";
+		case 8: bDiff="Rocket Hell";
+		case 9: bDiff="Total Blitzkrieg";
+		case 420: 
+		{
+			bDiff="SMOKE W33D ERRYDAY!";
+			EmitSoundToAll(SM0K3W33D);
+			EmitSoundToAll(SM0K3W33D);
+		}
+		case 777: bDiff="RAVIOLI RAVIOLI";
+		case 999: bDiff="D0NUT ST33L";
+		case 1337: 
+		{
+			bDiff="LOOMYNARTY";
+			if(LoomynartyMusic)
+			{
+				EmitSoundToAll(L00MYNARTY);
+				EmitSoundToAll(L00MYNARTY);
+				LoomynartyMusic = false;
+			}
+		}
 		case 9001:
 		{
 			bDiff="OVER 9000!";
 			EmitSoundToAll(OVER_9000);
 			EmitSoundToAll(OVER_9000);
 		}
+		default: Format(bDiff, sizeof(bDiff), "RNG Level %i", weapondifficulty);
 	}
 	switch(weapondifficulty)
 	{
@@ -2413,6 +2441,13 @@ public Action:KillGameText(Handle:hTimer, any:iEntityRef)
 }
 
 
+
+// Stocks
+stock SpawnRocketLauncher(client,String:name[],index,level,qual,String:att[])
+{
+	return SpawnWeapon(client, name, index, level, qual, att, true);
+}
+
 stock SpawnWeapon(client,String:name[],index,level,qual,String:att[], bool:isRocketLauncher = false)
 {
 	new Handle:hWeapon = TF2Items_CreateItem(OVERRIDE_ALL|FORCE_GENERATION);
@@ -2430,14 +2465,18 @@ stock SpawnWeapon(client,String:name[],index,level,qual,String:att[], bool:isRoc
 		if (count <= 30)
 		{
 			new Float:radius = 1.0;
-			if (weapondifficulty >= 1 && weapondifficulty <= 9)
+			if(weapondifficulty >= 1 && weapondifficulty <= 11)
 				radius = BMO_RocketRadius[weapondifficulty-1];
-			else if (weapondifficulty == 420)
-				radius = BMO_RocketRadius[9];
-			else if (weapondifficulty == 1337)
+			else if(weapondifficulty >=12  && weapondifficulty <= 420)
 				radius = BMO_RocketRadius[10];
-			else if (weapondifficulty == 9001)
+			else if(weapondifficulty >=421  && weapondifficulty <= 777)
 				radius = BMO_RocketRadius[11];
+			else if(weapondifficulty >=778  && weapondifficulty <= 999)
+				radius = BMO_RocketRadius[12];
+			else if(weapondifficulty >=1000  && weapondifficulty <= 1337)
+				radius = BMO_RocketRadius[13];
+			else if(weapondifficulty >=1338  && weapondifficulty <= 9001)
+				radius = BMO_RocketRadius[14];
 			
 			if (BMO_Flags & BMO_FLAG_STACK_RADIUS)
 			{
@@ -2476,7 +2515,7 @@ stock SpawnWeapon(client,String:name[],index,level,qual,String:att[], bool:isRoc
 	if (StrContains(name, "tf_wearable") != 0)
 		EquipPlayerWeapon(client, entity);
 	else
-		TF2_EquipWearable(client, entity);
+		Wearable_EquipWearable(client, entity);
 	return entity;
 }
 
@@ -2583,7 +2622,7 @@ public PostSetup()
 			}
 		}
 	}
-
+	
 	// Apparently this is still needed.
 	for(new client = 1; client <= MaxClients; client++ )
 	{
@@ -2591,8 +2630,9 @@ public PostSetup()
 		{
 			if(IsLivingPlayer(client) && GetClientTeam(client)!=FF2_GetBossTeam())
 			{
-				TF2_RegeneratePlayer(client);
+				//TF2_RegeneratePlayer(client);
 				CheckWeapons(client);
+				HealPlayer(client);
 				if(!IsFakeClient(client))
 					PlayerHelpPanel(client);
 			}
@@ -2602,64 +2642,66 @@ public PostSetup()
 
 public OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
+	// ensure we should be doing any of this at all
+	if (!blitzisboss || !IsLivingPlayer(dBoss))
+		return;
+
 	new attacker=GetClientOfUserId(GetEventInt(event, "attacker"));
-	new client=GetClientOfUserId(GetEventInt(event, "userid"));
-	if (client == dBoss)
+	new victim=GetClientOfUserId(GetEventInt(event, "userid"));
+	if (victim == dBoss)
 		return; // sarysa, fix an error when the hale loses
 		
-	if(allowrevive != 0 && FF2_GetBossIndex(client) == -1 && !(GetEventInt(event, "death_flags") & TF_DEATHFLAG_DEADRINGER)) // -1 means unlimited revives, any value greater than 0 sets a revive limit
-	{
-		#if defined _revivemarkers_included_
-		if(IntegrationMode)
-			SpawnRMarker(client);
-		else	
-			DropReviveMarker(client);
-		#else
-			DropReviveMarker(client);
-		#endif
-	}
-	
+	if ((GetEventInt(event, "death_flags") & TF_DEATHFLAG_DEADRINGER) != 0)
+		return; // sarysa, fix an error where dead ringer drops a revive marker
+		
 	new String:weapon[50];
 	GetEventString(event, "weapon", weapon, sizeof(weapon));
-	new aBoss=FF2_GetBossIndex(attacker);
-	new vBoss=FF2_GetBossIndex(client);
-	if(aBoss!=-1 || vBoss!=-1)
-	{		
-		if(StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
-		{
+	
+	new bossIdx = 0;
+
+	// allow revive for victim regardless of cause of death
+	if (allowrevive!=0 && FF2_GetBossIndex(victim) == -1)
+	{
+		EmitSoundToClient(victim, PLAYERDEATH);
+		#if defined _revivemarkers_included_
+		if(IntegrationMode)
+			SpawnRMarker(victim);
+		else	
+			DropReviveMarker(victim);
+		#else
+			DropReviveMarker(victim);
+		#endif
+	}
+	if (attacker == dBoss)
+	{
+		if (StrEqual(weapon, "tf_projectile_rocket", false)||StrEqual(weapon, "airstrike", false)||StrEqual(weapon, "liberty_launcher", false)||StrEqual(weapon, "quake_rl", false)||StrEqual(weapon, "blackbox", false)||StrEqual(weapon, "dumpster_device", false)||StrEqual(weapon, "rocketlauncher_directhit", false)||StrEqual(weapon, "flamethrower", false))
 			SetEventString(event, "weapon", "firedeath");
-		}
-
-		else if(StrEqual(weapon, "ubersaw", false)||StrEqual(weapon, "market_gardener", false))
-		{
+		else
 			SetEventString(event, "weapon", "saw_kill");
-		}
 
-		new Float:rageonkill = FF2_GetAbilityArgumentFloat(aBoss,this_plugin_name,"blitzkrieg_config",13,0.0);
-		new Float:bRage = FF2_GetBossCharge(aBoss,0);
+		new Float:rageonkill = FF2_GetAbilityArgumentFloat(bossIdx,this_plugin_name,"blitzkrieg_config",13,0.0);
+		new Float:bRage = FF2_GetBossCharge(bossIdx,0);
 
 		if(rageonkill)
 		{
 			if(100.0 - bRage < rageonkill) // We don't want RAGE to exceed more than 100%
-				FF2_SetBossCharge(aBoss, 0, bRage + (100.0 - bRage));
+				FF2_SetBossCharge(bossIdx, 0, bRage + (100.0 - bRage));
 			else if (100.0 - bRage > rageonkill)
-				FF2_SetBossCharge(aBoss, 0, bRage+rageonkill);
+				FF2_SetBossCharge(bossIdx, 0, bRage+rageonkill);
 		}
 
-		if(GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon")==GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
+		if (GetEntPropEnt(attacker, Prop_Send, "m_hActiveWeapon") == GetPlayerWeaponSlot(attacker, TFWeaponSlot_Primary))
 		{
 			if(combatstyle)
 			{	
 				TF2_RemoveWeaponSlot(attacker, TFWeaponSlot_Primary);
 				RandomDanmaku(attacker, weapondifficulty);
-				if(barrage)
-					SetAmmo(attacker, TFWeaponSlot_Primary, blitzkriegrage);
-				else
-					SetAmmo(attacker, TFWeaponSlot_Primary,999999);	
-			}	
+				SetAmmo(attacker, TFWeaponSlot_Primary, (barrage == true ? blitzkriegrage : 999999));
+			}		
 		}
 	}
 }	
+
 
 DropReviveMarker(client)
 {
@@ -2692,6 +2734,7 @@ DropReviveMarker(client)
 		}
 	}
 }
+
 
 public WhatWereYouThinking()
 {
@@ -2738,7 +2781,7 @@ public ItzBlitzkriegTime(Boss)
 	if(combatstyle)
 	{
 		TF2_RemoveWeaponSlot(Boss, TFWeaponSlot_Primary);
-		RandomDanmaku(Boss, weapondifficulty);
+		RandomDanmaku(Boss, weapondifficulty);	
 		SetAmmo(Boss, TFWeaponSlot_Primary,999999);
 	}
 	barrage=false;
@@ -2747,6 +2790,7 @@ public ItzBlitzkriegTime(Boss)
 public RemoveUber(Boss)
 {
 	SetEntProp(Boss, Prop_Data, "m_takedamage", 2);
+	TF2_AddCondition(Boss, TFCond_UberchargeFading, 3.0);
 }
 
 /**
@@ -2777,7 +2821,7 @@ public Blitz_Tick(Float:curTime)
 		RemoveUber(dBoss);
 		Blitz_RemoveUberAt = FAR_FUTURE;
 	}
-
+	
 	for (new clientIdx = 1; clientIdx < MAX_PLAYERS; clientIdx++)
 	{
 		if (curTime >= Blitz_MoveReviveMarkerAt[clientIdx])
@@ -2785,15 +2829,39 @@ public Blitz_Tick(Float:curTime)
 
 		if (curTime >= Blitz_RemoveReviveMarkerAt[clientIdx])
 			RemoveReanimator(clientIdx); // will also reset the timer
+		else if (Blitz_RemoveReviveMarkerAt[clientIdx] != FAR_FUTURE)
+		{
+			if (!IsLivingPlayer(dBoss) || GetClientTeam(clientIdx) == GetClientTeam(dBoss) || GetClientTeam(clientIdx) < 2)
+				RemoveReanimator(clientIdx);
+			else if (reviveMarker[clientIdx] == INVALID_ENTREF) // something weird happened
+				DropReanimator(clientIdx);
+		}
 			
 		// everything below requires the player to be alive
 		if (!IsLivingPlayer(clientIdx))
 			continue;
+		
+		if ((GetEntityFlags(clientIdx) & FL_DUCKING) == 0)
+			GetEntPropVector(clientIdx, Prop_Send, "m_vecOrigin", Blitz_LastPlayerPos[clientIdx]);
 			
 		if (curTime >= Blitz_ReverifyWeaponsAt[clientIdx])
 		{
 			Blitz_ReverifyWeaponsAt[clientIdx] = FAR_FUTURE;
-			CheckWeapons(clientIdx); // sarysa added this
+			//TF2_RegeneratePlayer(clientIdx);
+			CheckWeapons(clientIdx);
+			HealPlayer(clientIdx);
+		}
+
+		if (curTime >= Blitz_VerifyMedigunAt[clientIdx])
+		{
+			Blitz_VerifyMedigunAt[clientIdx] = FAR_FUTURE;
+			new medigun = GetPlayerWeaponSlot(clientIdx, TFWeaponSlot_Secondary);
+			if (IsValidEntity(medigun) && IsInstanceOf(medigun, "tf_weapon_medigun"))
+			{
+				new Float:charge = GetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel");
+				if (charge < 0.4)
+					SetEntPropFloat(medigun, Prop_Send, "m_flChargeLevel", charge + 0.4);
+			}
 		}
 	}
 }
@@ -2822,6 +2890,30 @@ public Action:OnStomp(attacker, victim, &Float:damageMultiplier, &Float:damageBo
  
 public Action:BMO_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype, &weapon, Float:damageForce[3], Float:damagePosition[3], damagecustom)
 {
+	if (TF2_GetPlayerClass(victim) == TFClass_DemoMan)
+	{
+		if (BMO_Flags & BMO_FLAG_NO_DEMOKNIGHT_FALL_DAMAGE)
+		{
+			if (attacker == 0 && inflictor == 0 && (damagetype & DMG_FALL) != 0)
+			{
+				new shield = GetPlayerWeaponSlot(victim, TFWeaponSlot_Secondary);
+				
+				// no stickybomb launcher = must be a demoknight. shields don't appear in weapon slot.
+				if (!IsValidEntity(shield))
+					return Plugin_Handled; // cancel fall damage
+			}
+		}
+	}
+
+	if (BMO_Flags & BMO_FLAG_VSP_SWORD_WORKAROUND)
+	{
+		if (IsLivingPlayer(attacker) && TF2_GetPlayerClass(attacker) == TFClass_DemoMan)
+		{
+			if (IsValidEntity(weapon) && IsInstanceOf(weapon, "tf_weapon_sword"))
+				IncrementHeadCount(attacker);
+		}
+	}
+
 	if (IsLivingPlayer(attacker) && attacker == dBoss)
 	{
 		new Float:oldDamage = damage;
@@ -2837,7 +2929,7 @@ public Action:BMO_OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &da
 	return Plugin_Continue;
 }
  
-public BMO_Tick()
+public BMO_Tick(Float:curTime)
 {
 	for (new i = 0; i < MAX_PENDING_ROCKETS; i++)
 	{
@@ -2879,6 +2971,35 @@ public BMO_Tick()
 
 		BMO_PendingRocketEntRefs[i] = INVALID_ENTREF;
 	}
+	
+	if (BMO_Flags & BMO_FLAG_DISPLAY_TIMER_HUD)
+	{
+		if (curTime >= BMO_UpdateTimerHUDAt && BMO_RoundEndsAt > curTime)
+		{
+			new seconds = RoundFloat(BMO_RoundEndsAt - curTime);
+			new minutes = seconds / 60;
+			seconds %= 60;
+		
+			for (new clientIdx = 1; clientIdx < MAX_PLAYERS; clientIdx++)
+			{
+				if (IsClientInGame(clientIdx) && GetClientTeam(clientIdx) >= 2)
+				{
+					SetHudTextParams(0.03, 0.018, 0.15, 255, 255, 255, 192);
+					if (seconds < 10)
+						ShowHudText(clientIdx, -1, "%d:0%d", minutes, seconds);
+					else
+						ShowHudText(clientIdx, -1, "%d:%d", minutes, seconds);
+				}
+			}
+			
+			BMO_UpdateTimerHUDAt = curTime + 0.1;
+		}
+	}
+	
+	if (curTime >= BMO_RoundEndsAt && IsLivingPlayer(dBoss))
+	{
+		ForcePlayerSuicide(dBoss);
+	}
 }
 
 public BMO_OnEntityCreated(entity, const String:classname[])
@@ -2893,6 +3014,7 @@ public BMO_OnEntityCreated(entity, const String:classname[])
 				break;
 			}
 		}
+		
 		rBounce[entity] = 0;
 		if(rMaxBounces == -1)
 			rMaxBounces = GetRandomInt(0,15); // RNG :3
@@ -3095,7 +3217,7 @@ public OnGameFrame()
 		return;
 		
 	if (BMO_ActiveThisRound)
-		BMO_Tick();
+		BMO_Tick(GetEngineTime());
 		
 	if (blitzisboss)
 		Blitz_Tick(GetEngineTime());
@@ -3505,6 +3627,73 @@ public bool:IsSpotSafe(clientIdx, Float:playerPos[3], Float:sizeMultiplier)
 	return true;
 }
 
+/**
+ * Stuff from FF2 retooled for VSP
+ */
+new Handle:S93SF_equipWearable = INVALID_HANDLE;
+stock Wearable_EquipWearable(client, wearable)
+{
+	if(S93SF_equipWearable==INVALID_HANDLE)
+	{
+		new Handle:config=LoadGameConfigFile("equipwearable");
+		if(config==INVALID_HANDLE)
+		{
+			LogError("[FF2] EquipWearable gamedata could not be found; make sure /gamedata/equipwearable.txt exists.");
+			return;
+		}
+
+		StartPrepSDKCall(SDKCall_Player);
+		PrepSDKCall_SetFromConf(config, SDKConf_Virtual, "EquipWearable");
+		CloseHandle(config);
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
+		if((S93SF_equipWearable=EndPrepSDKCall())==INVALID_HANDLE)
+		{
+			LogError("[FF2] Couldn't load SDK function (CTFPlayer::EquipWearable). SDK call failed.");
+			return;
+		}
+	}
+	SDKCall(S93SF_equipWearable, client, wearable);
+} 
+
+new Handle:S93SF_isWearable = INVALID_HANDLE;
+stock Wearable_IsWearable(wearable)
+{
+	if(S93SF_isWearable==INVALID_HANDLE)	
+	{
+		new Handle:config=LoadGameConfigFile("equipwearable");
+		if(config==INVALID_HANDLE)
+		{
+			LogError("[FF2] EquipWearable gamedata could not be found; make sure /gamedata/equipwearable.txt exists.");
+			return false;
+		}
+
+		StartPrepSDKCall(SDKCall_Entity);
+		PrepSDKCall_SetFromConf(config, SDKConf_Virtual, "IsWearable");
+		CloseHandle(config);
+		PrepSDKCall_SetReturnInfo(SDKType_Bool, SDKPass_Plain);
+		if((S93SF_isWearable=EndPrepSDKCall())==INVALID_HANDLE)
+		{
+			LogError("[FF2] Couldn't load SDK function (CTFPlayer::IsWearable). SDK call failed.");
+			return false;
+		}
+	}
+	return SDKCall(S93SF_isWearable, wearable);
+}
+
+stock IncrementHeadCount(client)
+{
+	if(!TF2_IsPlayerInCondition(client, TFCond_DemoBuff))
+	{
+		TF2_AddCondition(client, TFCond_DemoBuff, -1.0);
+	}
+	new decapitations=GetEntProp(client, Prop_Send, "m_iDecapitations");
+	SetEntProp(client, Prop_Send, "m_iDecapitations", decapitations+1);
+	new health=GetClientHealth(client);
+	SetEntProp(client, Prop_Data, "m_iHealth", health+15);
+	SetEntProp(client, Prop_Send, "m_iHealth", health+15);
+	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.01);
+}
+
 public Action:OnStartTouch(entity, other)
 {
 	if (other > 0 && other <= MaxClients)
@@ -3569,7 +3758,7 @@ public bool:TEF_ExcludeEntity(entity, contentsMask, any:data)
 
 public Action:TF2_CalcIsAttackCritical(client, weapon, String:weaponname[], &bool:result)
 {
-	if (RoundInProgress && IsValidEntity(weapon) && FF2_GetBossIndex(client)==-1)
+	if (RoundInProgress && customweapons && IsValidEntity(weapon) && FF2_GetBossIndex(client)==-1)
 	{
 		if (!StrContains(weaponname, "tf_weapon_club"))
 		{
