@@ -122,7 +122,8 @@ Many thanks to sarysa for many fixes, improvements and enhancements.
 			arg13 - override for straight goomba damage, leave blank or set to zero to not use
 			arg14 - override for HP factor goomba damage, leave blank or set to zero to not use
 			arg15 - needed for medic limit
-		
+			arg16 - Round time limit. Specify a value in seconds to enable.
+
 			arg19 - various flags, add them up for desired results
 				0x0001: Never change the player model.
 				0x0002: Never change the player class
@@ -137,6 +138,8 @@ Many thanks to sarysa for many fixes, improvements and enhancements.
 				0x0400: Disable the match end Administrator messages.
 				0x0800: Disable class reaction messages.
 				0x1000: Disable goombas entirely.
+				0x8000: VSP-specific workaround for the head collection problem. If you're not VSP, don't include this flag.
+
 
 		blitzkrieg_map_difficulty_override
 		
