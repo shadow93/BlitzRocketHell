@@ -110,7 +110,8 @@
 			arg13 - override for straight goomba damage, leave blank or set to zero to not use
 			arg14 - override for HP factor goomba damage, leave blank or set to zero to not use
 			arg15 - needed for medic limit
-		
+			arg16 - Round time limit (in seconds)
+			
 			arg19 - various flags, add them up for desired results
 				0x0001: Never change the player model.
 				0x0002: Never change the player class
@@ -125,6 +126,7 @@
 				0x0400: Disable the match end Administrator messages.
 				0x0800: Disable class reaction messages.
 				0x1000: Disable goombas entirely.
+				0x8000: VSP-specific workaround for the head collection problem. If you're not VSP, don't include this flag.
 
 		blitzkrieg_map_difficulty_override
 		
@@ -205,7 +207,7 @@ new rBounce[MAX_EDICTS], rMaxBounceCount[MAX_EDICTS], rMaxBounces = 0;
 // Version Number
 #define MAJOR_REVISION "2"
 #define MINOR_REVISION "4"
-//#define PATCH_REVISION "0"
+#define PATCH_REVISION "1"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 
@@ -1965,7 +1967,7 @@ CheckWeapons(client)
 			case 44:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, "tf_weapon_bat_wood", index, 5, 10, "38 ; 1 ; 125 ; -15 ; 249 ; 1.5 ; 279 ; 5.0");
+				SpawnWeapon(client, "tf_weapon_bat_wood", index, 5, 10, "38 ; 1 ; 125 ; -15 ; 278 ; 1.5 ; 279 ; 5.0");
 				CPrintToChat(client, "Sandman:");	
 				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
 				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
@@ -1974,17 +1976,18 @@ CheckWeapons(client)
 				SetAmmo(client, TFWeaponSlot_Melee, 5);
 			}
 			
-			case 648:
+			// Temporarily disabled Wrap Assassin due to some issues regarding insta-killing Blitz.
+			/*case 648:
 			{
 				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, "tf_weapon_bat_giftwrap", index, 5, 10, "1 , 0.3 ; 346 ; 1 ; 249 ; 1.5 ; 279 ; 5.0");
+				SpawnWeapon(client, "tf_weapon_bat_giftwrap", index, 5, 10, "1 , 0.3 ; 346 ; 1 ; 278 ; 1.5 ; 279 ; 5.0");
 				CPrintToChat(client, "Wrap Assassin:");	
 				CPrintToChat(client, "{blue}+400% Max Misc Ammo");	
 				CPrintToChat(client, "{blue}+50% Faster Recharge Rate");	
 				CPrintToChat(client, "{blue}Alt-fire to launch ornament");			
 				CPrintToChat(client, "{red}-70% Damage Penalty");
 				SetAmmo(client, TFWeaponSlot_Melee, 5);
-			}
+			}*/
 		}
 	}
 	// Build PDA
