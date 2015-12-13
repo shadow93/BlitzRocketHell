@@ -186,6 +186,9 @@ new bool:PRINT_DEBUG_SPAM = false;
 
 // back to shadow93's code
 new timeExtension=0;
+new startTime=0;
+new maxWaves=0;
+new playerCT=0;
 #define BLITZSETUP "blitzkrieg_config"
 new bool: LoomynartyMusic = false;
 #define PLAYERDEATH "freak_fortress_2/s93dm/dm_playerdeath.mp3"
@@ -196,8 +199,6 @@ new bool: LoomynartyMusic = false;
 #define SM0K3W33D "freak_fortress_2/s93dm/dm_w33d.mp3"
 #define RAVIOLIZ "freak_fortress_2/s93dm/dm_ravioli.mp3"
 #define DONUTZ "freak_fortress_2/s93dm/dm_donut.mp3"
-#define BLITZ_BLIP "buttons/blip1.wav"
-#define BLITZ_RESET "ui/hitsound.wav"
 
 #define BLITZ_MEDIC "models/freak_fortress_2/shadow93/dmedic/d_medic.mdl"
 #define BLITZ_SOLDIER "models/freak_fortress_2/shadow93/dmedic/d_soldier.mdl"
@@ -212,7 +213,7 @@ new rBounce[MAX_EDICTS], rMaxBounceCount[MAX_EDICTS], rMaxBounces = 0;
 
 // Version Number
 #define MAJOR_REVISION "3"
-#define MINOR_REVISION "1"
+#define MINOR_REVISION "2"
 //#define PATCH_REVISION "0"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
@@ -232,6 +233,8 @@ public Plugin:myinfo = {
 
 
 //Other Stuff
+new blitzBossIdx;
+bool RNGesus=false;
 new UseCustomWeapons;
 new WeaponMode;
 new DifficultyLevel;
@@ -418,6 +421,7 @@ new String:BHS_RocketHell[MAX_CENTER_TEXT_LENGTH]; // arg11, RocketHell
 new String:BHS_TotalBlitzkrieg[MAX_CENTER_TEXT_LENGTH]; // arg12, TotalBlitzkrieg
 new String:BHS_RNGDisplay[MAX_CENTER_TEXT_LENGTH]; // arg13, RNGLevel
 new String:BHS_Counter[MAX_CENTER_TEXT_LENGTH]; // arg14, counter HUD
+new String:BHS_Counter2[MAX_CENTER_TEXT_LENGTH]; // arg15, counter HUD
 
 // Level Up Enabled Indicator
 static const String:BlitzCanLevelUpgrade[][] = {
@@ -542,8 +546,6 @@ public Blitzkrieg_PrecacheSounds() // sarysa 2015-03-25, OnMapStart() NEVER work
 	PrecacheSound(SM0K3W33D, true);
 	PrecacheSound(RAVIOLIZ, true);
 	PrecacheSound(DONUTZ, true);
-	PrecacheSound(BLITZ_BLIP, true);
-	PrecacheSound(BLITZ_RESET, true);
 
 	// RAGE GENERIC ALERTS
 	PrecacheSound(BLITZKRIEG_SND,true);
@@ -629,6 +631,8 @@ public OnPluginStart2()
 	{
 		Blitzkrieg_HookAbilities();
 	}
+
+	LoadTranslations("dmedic.phrases");
 	
 	for (new clientIdx = 1; clientIdx < MAX_PLAYERS; clientIdx++)
 		reviveMarker[clientIdx] = INVALID_ENTREF;
@@ -775,6 +779,7 @@ public Blitzkrieg_HookAbilities()
 			if (FF2_HasAbility(bossIdx, this_plugin_name, BLITZSETUP))
 			{	
 				IsBlitzkrieg[clientIdx]=true;
+				blitzBossIdx=bossIdx;
 				// sarysa: load the strings first
 				if (FF2_HasAbility(bossIdx, this_plugin_name, BS_STRING))
 				{
@@ -973,6 +978,13 @@ public Blitzkrieg_HookAbilities()
 						FF2_ShowHudText(clientIdx, -1, BS_CombatModeNoMelee);
 						PlotTwist(clientIdx);
 						Blitz_WaveTick=GetEngineTime()+1.0;
+						
+						// Disable FF2's countdown timer and use Blitzkrieg's own
+						playerCT=GetConVarInt(FindConVar("ff2_countdown_players"));
+						if(playerCT)
+						{
+							SetConVarInt(FindConVar("ff2_countdown_players"),0);
+						}
 					}
 					case 0:
 					{
@@ -1045,12 +1057,18 @@ public Blitzkrieg_HookAbilities()
 					ReadCenterText(bossIdx, BS_H_STRING, 12, BHS_TotalBlitzkrieg);	
 					ReadCenterText(bossIdx, BS_H_STRING, 13, BHS_RNGDisplay);
 					ReadCenterText(bossIdx, BS_H_STRING, 14, BHS_Counter);		
+					ReadCenterText(bossIdx, BS_H_STRING, 15, BHS_Counter2);		
 				}
 			
 				RefreshDifficulty(DifficultyLevel);
 			
 				rMaxBounces = FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 14); // Projectile Bounce
-				timeExtension = FF2_GetAbilityArgument(0, this_plugin_name, BLITZSETUP, 15);
+				timeExtension = FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 15);
+				startTime = FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 16, 60);
+				maxWaves = FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 17);
+				RNGesus = bool:FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 18);
+				
+				
 				if(LevelUpgrade)
 					Blitz_AdminTauntAt = GetEngineTime() + 6.0;
 			}
@@ -1170,6 +1188,11 @@ public Action:OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 
 	if(blitzisboss)
 	{
+		if(playerCT)
+		{
+			SetConVarInt(FindConVar("ff2_countdown_players"),playerCT);
+		}
+	
 		DifficultyLevel = 0;
 		MaxClientRevives = 0;
 		RageIsBarrage = false;
@@ -1228,6 +1251,13 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 	new Boss=GetClientOfUserId(FF2_GetBossUserId(boss));
 	if (!strcmp(ability_name,"blitzkrieg_barrage")) 	// UBERCHARGE, KRITZKRIEG & CROCKET HELL
 	{	
+		if(WeaponMode && GetRandomFloat(0.00,1.0)<=0.05 && RNGesus) // baka?
+		{
+			NullRockets();
+			ForcePlayerSuicide(Boss);
+			return Plugin_Continue;
+		}
+		
 		RageIsBarrage=true;
 		BMO_CurrentIsBlizkrieg = true;
 			
@@ -2013,16 +2043,24 @@ public Blitz_HUDSyncTick(Float:curTime)
 				}
 			}
 		}
-		Blitz_HUDSync=GetEngineTime()+0.2;
+		Blitz_HUDSync+=0.2;
 	}
 	
 	if(curTime>=Blitz_WaveTick)
 	{
-		static BlitzCount=60;
+		static wavesDone=0;
+		static BlitzCount=0;
+		if(!BlitzCount && !wavesDone)
+		{
+			BlitzCount+=startTime;
+			wavesDone++;
+		}
+		
 		static BlitzTimePassed=0;
 		if(FF2_GetRoundState()!=1)
-		{
-			BlitzCount=60;
+		{	
+			wavesDone=0;
+			BlitzCount=startTime;
 			BlitzTimePassed=0;
 			Blitz_WaveTick=FAR_FUTURE;
 			return;
@@ -2054,7 +2092,16 @@ public Blitz_HUDSyncTick(Float:curTime)
 			
 			new String:countdown[MAX_CENTER_TEXT_LENGTH];
 			SetHudTextParams(-1.0, 0.25, 1.1, BlitzCount<=30 ? 255 : 0, BlitzCount>10 ? 255 : 0, 0, 255);
-			Format(countdown,sizeof(countdown), BHS_Counter, waveTime);
+			
+			if(maxWaves>0)
+			{
+				Format(countdown,sizeof(countdown), BHS_Counter2, wavesDone, maxWaves, waveTime);
+			}
+			else
+			{
+				Format(countdown,sizeof(countdown), BHS_Counter, wavesDone, waveTime);			
+			}
+			
 			ShowSyncHudText(clientIdx, counterHUD, countdown);	
 		
 			if(!BlitzCount)
@@ -2082,26 +2129,49 @@ public Blitz_HUDSyncTick(Float:curTime)
 			}
 		}
 	
-		switch(BlitzCount)
+		if(BlitzCount<=10)
 		{
-			case 0: // Give ammo & reset timer
+			char sound[PLATFORM_MAX_PATH];
+			switch(BlitzCount)
 			{
-				NullRockets();
-				EmitSoundToAll(BLITZ_RESET);
-				rocketCount=0;
-				BlitzCount=BlitzTimePassed+timeExtension;
-				BlitzTimePassed=0;
-				Blitz_WaveTick=GetEngineTime()+1.0;
-				return;
-			}
-			case 10,9,8,7,6,5,4,3,2,1:
-			{
-				EmitSoundToAll(BLITZ_BLIP);
-			}
+				case 0: // Give ammo & reset timer
+				{
+					NullRockets();
+					if(FF2_RandomSound("sound_blitz_countdown_reset", sound, sizeof(sound), blitzBossIdx))
+					{
+						EmitSoundToAll(sound);
+					}
+					rocketCount=0;
+					
+					if(maxWaves>0 && wavesDone>=maxWaves)
+					{
+						ForceTeamWin(0);
+						wavesDone=0;
+						BlitzCount=startTime;
+						BlitzTimePassed=0;
+						Blitz_WaveTick=FAR_FUTURE;
+						return;
+					}
+					
+					wavesDone++;
+					BlitzCount=BlitzTimePassed+timeExtension;
+					BlitzTimePassed=0;
+					Blitz_WaveTick+=1.0;
+					
+					return;
+				}
+				case 10,9,8,7,6,5,4,3,2,1:
+				{
+					if(FF2_RandomSound("sound_blitz_countdown_tick", sound, sizeof(sound), blitzBossIdx))
+					{
+						EmitSoundToAll(sound);
+					}
+				}
+			}				
 		}
 		BlitzCount--;
 		BlitzTimePassed++;
-		Blitz_WaveTick=GetEngineTime()+1.0;
+		Blitz_WaveTick+=1.0;
 	}
 }
 public Blitz_Tick(Float:curTime)
@@ -3668,7 +3738,16 @@ public int RandomDanmaku(int client, int difficulty)
 	RefreshDifficulty(DifficultyLevel);
  }
  
- public void CheckWeapons(int client, bool weaponInfo)
+public void HealPlayer(int clientIdx)
+{
+	// damnit valve, why is max health so useless.
+	// gotta go with the hack fix instead
+	int maxHealth = GetEntProp(GetPlayerResourceEntity(), Prop_Send, "m_iMaxHealth", _, clientIdx);
+	maxHealth += 100;
+	SetEntityHealth(clientIdx, maxHealth);
+}
+ 
+public void CheckWeapons(int client, bool weaponInfo)
 {
 	// special logic for meeeeeedic
 	if(BMO_MedicType[client]!=BMO_MEDIGUN_MEDIC && TF2_GetPlayerClass(client)==TFClass_Medic)
@@ -3690,406 +3769,296 @@ public int RandomDanmaku(int client, int difficulty)
 		
 		return; // just leave. nothing else for us here.
 	}
+	
 	char classname[64];
-	int weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
-	int index=-1;
-	// Primary
-	if(!BWO_CheckWeaponOverrides(client, weapon, TFWeaponSlot_Primary) && weapon && IsValidEdict(weapon))
+	int weapon, index=-1;
+	for(int slot=0;slot<=5;slot++)
 	{
-		GetEdictClassname(weapon, classname, sizeof(classname));
-		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		
-		/*********************************************************************************************************************************************
-		 * Because Gun Mettle introduced a lot of stock reskins, we now check the weapon classname and ensure they're not a unique weapon index type.*
-		 *********************************************************************************************************************************************/
-		
-		if(!StrContains(classname, "tf_weapon_rocketlauncher") && (index!=127 || index!=228 || index!=414 || index!=441 || index!=730 || index!=1085 || index!=1104)) // Rocket Launcher
+		weapon=GetPlayerWeaponSlot(client, slot);
+		if(!BWO_CheckWeaponOverrides(client, weapon, slot) && weapon && IsValidEdict(weapon))
 		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-			weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.90 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 1.5 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
+			GetEdictClassname(weapon, classname, sizeof(classname));
+			index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+		
+			/*********************************************************************************************************************************************
+			* Because Gun Mettle introduced a lot of stock reskins, we now check the weapon classname and ensure they're not a unique weapon index type.*
+			*********************************************************************************************************************************************/
+		
+			if(!StrContains(classname, "tf_weapon_rocketlauncher") && (index!=127 || index!=228 || index!=414 || index!=441 || index!=730 || index!=1085 || index!=1104)) // Rocket Launcher
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.90 ; 4 ; 2.0 ; 6 ; 0.25 ; 15 ; 1 ; 58 ; 1.5 ; 76 ; 6 ; 135 ; 0.30 ; 232 ; 10 ; 275 ; 1");
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "rocket_launcher");
+				}
+			}
+		
+			if(!StrContains(classname, "tf_weapon_flamethrower") && index!=594) // Flamethrowers minus phlog
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 2.0 ; 162 ; 2.0 ; 255 ; 2.5 ; 164 ; 3.0 ; 362 ; 1 ; 173 ; 1.75 ; 178 ; 0.3");
+					
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "flamethrower");
+				}
+			}
+		
+			if(!StrContains(classname, "tf_weapon_grenadelauncher") && (index!=308 || index!=996 ||index!=1151)) // Grenade Launcher
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.15 ; 4 ; 3 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4.5 ; 470 ; 0.75");
 				
-			PrintWeaponInfo(client, "Rocket Launcher:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+100% Clip Size", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+75% Faster firing speed", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+50% self damage push force", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+500% max primary ammo on wearer", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}-70% Blast Damage from rocket jumps", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Wearer never takes fall damage", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}-10% Damage Penalty", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}No Random Critical Hits", weaponInfo==true ? true : false);	
-		}
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "grenade_launcher");
+				}
+			}
 		
-		if(!StrContains(classname, "tf_weapon_flamethrower") && index!=594) // Flamethrowers minus phlog
-		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-			weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 2.0 ; 162 ; 2.0 ; 255 ; 2.5 ; 164 ; 3.0 ; 362 ; 1 ; 173 ; 1.75 ; 178 ; 0.3");
-				
-			PrintWeaponInfo(client, "Flamethrower:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+100% Damage Bonus", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+100% Flame Spread Area", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+150% Airblast Push Force", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+200% Flame Distance", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}70% Faster Weapon Switch", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Always crits from behind", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}+75% ammo consumed per second", weaponInfo==true ? true : false);
-		}
-		
-		if(!StrContains(classname, "tf_weapon_grenadelauncher") && (index!=308 || index!=996 ||index!=1151)) // Grenade Launcher
-		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-			weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.15 ; 4 ; 3 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4.5 ; 470 ; 0.75");
+			if(!StrContains(classname, "tf_weapon_minigun") && (index!=312 || index!=424 || index!=811 || index!=832)) // Miniguns
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				weapon=SpawnWeapon(client, classname, index, 5, 10, "375 ; 50");
 			
-			PrintWeaponInfo(client, "Grenade Launcher:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+15% Damage bonus", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+200% Clip Size", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+350% Max Primary Ammo", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+75% Faster Firing Speed", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+75% Faster Reload Time", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}-25% damage on contact with surfaces", weaponInfo==true ? true : false);
-		}
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "minigun");
+				}
+			}
 		
-		if(!StrContains(classname, "tf_weapon_minigun") && (index!=312 || index!=424 || index!=811 || index!=832)) // Miniguns
-		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-			weapon=SpawnWeapon(client, classname, index, 5, 10, "375 ; 50");
+			if(!StrContains(classname, "tf_weapon_flaregun")) // Flareguns
+			{	
+				TF2_RemoveWeaponSlot(client, slot);
+				weapon=SpawnWeapon(client, classname, index, 5, 10, "25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
 			
-			PrintWeaponInfo(client, "Minigun:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use.", weaponInfo==true ? true : false);	
-		}
-		
-		switch(index) // "Unique" weapon types and variants
-		{
-			case 127: // Direct Hit
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "103 ; 2 ; 114 ; 1 ; 100 ; 0.30 ; 2 ; 1.50 ; 15 ; 1 ; 179 ; 1 ; 488 ; 3 ; 621 ; 0.35 ; 643 ; 0.75 ; 644 ; 10");
-				
-				PrintWeaponInfo(client, "Direct Hit:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% Damage bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+100% Projectile speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Increased Attack speed while blast jumping", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Rocket Specialist", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Clip size increased as you deal damage", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Wearer never takes fall damage", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Minicrits airborne targets", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Minicrits become crits", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-70% Explosion radius", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}No Random Critical Hits", weaponInfo==true ? true : false);
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "flaregun");
+				}
 			}
-			case 228, 1085: // Black Box, Festive Black Box
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
-				
-				PrintWeaponInfo(client, "Black Box:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}On-Hit: +5 Health", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+200% Self Damage Push Force", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+250% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}-40% Blast Damage from rocket jumps", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}While a medic is healing you, this weapon's damage is increased by +50%", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}No Random Critical Hits", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-50% Blast Radius", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}While not being healed by a medic, your weapon switch time is +30% longer", weaponInfo==true ? true : false);
-			}
-			case 308: // Loch & Load
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.75 ; 3 ; 0.75 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 3 ; 127 ; 2");
-				
-				PrintWeaponInfo(client, "Loch-n-Load:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Damage bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-25% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+200% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Reload Time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Launched bombs shatter on surfaces", weaponInfo==true ? true : false);
-			}
-			case 312: // Brass Beast
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.2 ; 86 ; 1.5 ; 183 ; 0.4 ; 375 ; 50");
-				
-				PrintWeaponInfo(client, "Brass Beast:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+20% Damage Bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}+50% Slower Spin-up Time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-60% Slower move speed while deployed", weaponInfo==true ? true : false);
-			}
-			case 414: // Liberty Launcher
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.75 ; 4 ; 2.5 ; 6 ; 0.4 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.85 ; 103 ; 2 ; 135 ; 0.50");
-				
-				PrintWeaponInfo(client, "Liberty Launcher:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+150% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+60% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+200% Self Damage Push Force", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+250% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-25% Damage Penalty", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-50% Blast Damage from rocket jumps", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-15% Blast Radius", weaponInfo==true ? true : false);
-			}
-			case 424: // Tomislav
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "5 ; 1.1 ; 87 ; 1.1 ; 238 ; 1 ; 375 ; 50");
-				
-				PrintWeaponInfo(client, "Tomislav:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+10% Damage Bonus.", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}-10% Faster Spinup Time.", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}No Barrel Spinup Sound", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}+20% Slower Firing Speed", weaponInfo==true ? true : false);
-			}
-			case 441: //Cow Mangler
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.5 ; 58 ; 2 ; 281 ; 1 ; 282 ; 1 ; 288 ; 1 ; 366 ; 5");
-				
-				PrintWeaponInfo(client, "Cow Mangler:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% damage bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+100% Self Damage Push Force", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}No Ammo needed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}A successful hit mid-air stuns the boss for 5 seconds", weaponInfo==true ? true : false);
-
-			}
-			case 730: //Beggar's Bazooka
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "135 ; 0.25 ; 58 ; 1.5 ; 2 ; 1.1 ; 4 ; 7.5 ; 6 ; 0 ; 76 ; 10 ; 97 ; 0.25 ; 411 ; 15 ; 413 ; 1 ; 417 ; 1");
-				
-				PrintWeaponInfo(client, "Beggar's Bazooka:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+10% Damage Bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+650% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+85% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% Self Damage Push Force", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+1000% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster reload speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}-75% Blast Damage from rocket jumps", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Hold Fire to load up to 30 Rockets", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Overloading will Misfire", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}+30 Degrees Random Projectile Deviation", weaponInfo==true ? true : false);
-			}
-			case 811, 832: // Huo-Long Heater
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "71 ; 1.25 ; 76 ; 2 ; 206 ; 1.25 ; 375 ; 50 ; 430 ; 1 ; 431 ; 5");
-				
-				PrintWeaponInfo(client, "Huo-Long Heater:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+10% Max Primary Ammo on-wearer", weaponInfo==true ? true : false);				
-				PrintWeaponInfo(client, "{blue}+25% Afterburn Damage Bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Sustains a ring of flames while deployed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Generate Knockback rage by dealing damage. Use +attack3 when meter is full to use", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Uses +5 Ammo per second while deployed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}+25% damage from melee sources while active", weaponInfo==true ? true : false);
-			}
-			case 996: // Loose Cannon
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.25 ; 4 ; 1.5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4 ; 466 ; 1 ; 467 ; 1 ; 470 ; 0.7");
-				
-				PrintWeaponInfo(client, "Loose Cannon:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+25% Damage bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+300% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Reload Time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-30% damage on contact with surfaces", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Cannonballs have a fuse time of 1 second; fuses can be primed to explode earlier by holding down the fire key.", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Cannonballs do not explode on impact", weaponInfo==true ? true : false);
-			}
-			case 1104: // Air Strike
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 3 ; 621 ; 0.35 ; 642 ; 1 ; 643 ; 0.75 ; 644 ; 10");
-				
-				PrintWeaponInfo(client, "Air Strike:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Increased Attack speed while blast jumping", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Rocket Specialist", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Clip size increased as you deal damage", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}When the medic healing you is killed, you gain mini-crit boost for 10 seconds", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Wearer never takes fall damage", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-10% Damage Penalty", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}No Random Critical Hits", weaponInfo==true ? true : false);
-			}
-			case 1153: // Panic Attack
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");	
-				
-				PrintWeaponInfo(client, "Panic Attack (while active):", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75& Faster move speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+34% faster reload time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}When the medic healing you is killed, you gain mini crits for 15 seconds", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% blast, fire & crit damage vulnerability", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Hold fire to load up to 6 shells", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Fire rate increases as health decreases", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Weapon spread increases as health decreases", weaponInfo==true ? true : false);
-			}
-			case 1151: // Iron Bomber
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Primary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.10 ; 4 ; 5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 6 ; 671 ; 1 ; 684 ; 0.6");
-				
-				PrintWeaponInfo(client, "Iron Bomber:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+10% Damage bonus", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+400% Clip Size", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+500% Max Primary Ammo", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Firing Speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75% Faster Reload Time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}-40% damage on grenades that explode on timer", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Grenades have very little bound and roll", weaponInfo==true ? true : false);
-			}
-		}
-	}
-	// Secondary
-	weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
-	if (!BWO_CheckWeaponOverrides(client, weapon, TFWeaponSlot_Secondary) && weapon && IsValidEdict(weapon))
-	{
-		GetEdictClassname(weapon, classname, sizeof(classname));
-		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		
-		if(!StrContains(classname, "tf_weapon_flaregun")) // Flareguns
-		{	
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-			weapon=SpawnWeapon(client, classname, index, 5, 10, "25 ; 0.75 ; 65 ; 1.75 ; 207 ; 1.10 ; 144 ; 1 ; 58 ; 4.5 ; 20 ; 1 ; 22 ; 1 ; 551 ; 1 ; 15 ; 1");
 			
-			PrintWeaponInfo(client, "Mighty Detonator:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Crits vs Burning Players", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+450% self damage push force", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}No crits vs non-burning", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{red}No Random Critical Hits", weaponInfo==true ? true : false);
-		}
+			if(!StrContains(classname, "tf_weapon_medigun")) // Medigun
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				SpawnWeapon(client, classname, index, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
+			
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "medigun");
+				}
+				Blitz_VerifyMedigunAt[client] = GetEngineTime() + 3.0;
+			}
 		
-		if(!StrContains(classname, "tf_weapon_medigun")) // Medigun
-		{
-			TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-			SpawnWeapon(client, classname, index, 5, 10, "499 ; 50.0 ; 10 ; 1.25 ; 178 ; 0.75 ; 144 ; 2.0 ; 11 ; 1.5 ; 482 ; 3 ; 493 ; 3");
-			PrintWeaponInfo(client, "Medigun:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Use +attack3 (default middle mouse button) to deploy projectile shield", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Overheal Expert applied", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Healing Mastery applied", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+25% faster charge rate", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+25% faster weapon switch", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+50% overheal bonus", weaponInfo==true ? true : false);
-			Blitz_VerifyMedigunAt[client] = GetEngineTime() + 3.0;
-		}
+			if(!StrContains(classname, "tf_weapon_pda_engineer_build")) // Build PDA
+			{
+				TF2_RemoveWeaponSlot(client, slot);
+				SpawnWeapon(client, classname, index, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
+				
+				if(weaponInfo)
+				{
+					CPrintToChat(client, "%t", "build_pda");
+				}
+			}
 		
-		switch(index)
-		{
-			case 42, 863, 1002: // Sandvich, Robo-Sandvich & Festive Sandvich
+			switch(index) // "Unique" weapon types and variants
 			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);					
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "144 ; 4 ; 278 ; 0.5");
-				
-				PrintWeaponInfo(client, "Sandvich:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% Faster Regen Rate", weaponInfo==true ? true : false);
-			}
-			case 129, 1001: // Buff Banner
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
-				
-				PrintWeaponInfo(client, "Buff Banner:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+150% longer buff duration", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% max health", weaponInfo==true ? true : false);
-			}
-			case 226: // Battalion's Backup
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 116 ; 2 ; 292 ; 51 ; 319 ; 2.50");
-				
-				PrintWeaponInfo(client, "Battalion's Backup:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+150% longer buff duration", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% max health", weaponInfo==true ? true : false);
-			}
-			case 354: // Concheror
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
-				
-				PrintWeaponInfo(client, "Concheror:", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+150% longer buff duration", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% max health", weaponInfo==true ? true : false);
-			}
-			case 1153: // Panic Attack
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Secondary);
-				weapon=SpawnWeapon(client, classname, index, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");
-				
-				PrintWeaponInfo(client, "Panic Attack (while active):", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+75& Faster move speed", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+34% faster reload time", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}When the medic healing you is killed, you gain mini crits for 15 seconds", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}+50% blast, fire & crit damage vulnerability", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Hold fire to load up to 6 shells", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{blue}Fire rate increases as health decreases", weaponInfo==true ? true : false);
-				PrintWeaponInfo(client, "{red}Weapon spread increases as health decreases", weaponInfo==true ? true : false);
-			}
-		}
-	}
 	
-	// Melee Weapons
-	weapon=GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
-	if (!BWO_CheckWeaponOverrides(client, weapon, TFWeaponSlot_Melee) && weapon && IsValidEdict(weapon))
-	{
-		GetEdictClassname(weapon, classname, sizeof(classname));
-		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		switch(index)
-		{
-			case 44:
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, classname, index, 5, 10, "38 ; 1 ; 125 ; -15 ; 278 ; 1.5 ; 279 ; 5.0");
+				case 42, 863, 1002: // Sandvich, Robo-Sandvich & Festive Sandvich
+				{
+					TF2_RemoveWeaponSlot(client, slot);					
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "144 ; 4 ; 278 ; 0.5");
 				
-				PrintWeaponInfo(client, "Sandman:", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}+400% Max Misc Ammo", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}+50% Faster Recharge Rate", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}Alt-fire to launch baseball", weaponInfo==true ? true : false);			
-				PrintWeaponInfo(client, "{red}-15% Max Health", weaponInfo==true ? true : false);
-				SetAmmo(client, TFWeaponSlot_Melee, 5);
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "sandvich");
+					}
+				}
+				case 44:
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					SpawnWeapon(client, classname, index, 5, 10, "38 ; 1 ; 125 ; -15 ; 278 ; 1.5 ; 279 ; 5.0");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "sandman");
+					}
+					SetAmmo(client, TFWeaponSlot_Melee, 5);
+				}
+				case 127: // Direct Hit
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "103 ; 2 ; 114 ; 1 ; 100 ; 0.30 ; 2 ; 1.50 ; 15 ; 1 ; 179 ; 1 ; 488 ; 3 ; 621 ; 0.35 ; 643 ; 0.75 ; 644 ; 10");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "direct_hit");
+					}				
+				}
+			
+				case 129, 1001: // Buff Banner
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 116 ; 1 ; 292 ; 51 ; 319 ; 2.50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "buff_banner");
+					}
+				}
+				case 226: // Battalion's Backup
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 116 ; 2 ; 292 ; 51 ; 319 ; 2.50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "battalions_backup");
+					}
+				}
+				case 228, 1085: // Black Box, Festive Black Box
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "4 ; 1.5 ; 6 ; 0.25 ; 15 ; 1 ; 16 ; 5 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.5 ; 135 ; 0.60 ; 233 ; 1.50 ; 234 ; 1.30");
+					
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "black_box");
+					}
+				}
+				case 308: // Loch & Load
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.75 ; 3 ; 0.75 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 3 ; 127 ; 2");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "loch_n_load");
+					}
+				}
+				case 312: // Brass Beast
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.2 ; 86 ; 1.5 ; 183 ; 0.4 ; 375 ; 50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "brass_beast");
+					}
+				}
+				case 354: // Concheror
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "26 ; 50 ; 57 ; 3 ; 116 ; 3 ; 292 ; 51 ; 319 ; 2.50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "concheror");
+					}
+				}
+				case 414: // Liberty Launcher
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.75 ; 4 ; 2.5 ; 6 ; 0.4 ; 58 ; 3 ; 76 ; 3.50 ; 100 ; 0.85 ; 103 ; 2 ; 135 ; 0.50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "liberty_launcher");
+					}
+				}
+				case 424: // Tomislav
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "5 ; 1.1 ; 87 ; 1.1 ; 238 ; 1 ; 375 ; 50");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "tomislav");
+					}
+				}
+				case 441: //Cow Mangler
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.5 ; 58 ; 2 ; 281 ; 1 ; 282 ; 1 ; 288 ; 1 ; 366 ; 5");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "cow_mangler");
+					}
+				}
+				// Temporarily disabled Wrap Assassin due to some issues regarding insta-killing Blitz.
+				/*case 648:
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					SpawnWeapon(client, classname, index, 5, 10, "1 , 0.3 ; 346 ; 1 ; 278 ; 1.5 ; 279 ; 5.0");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "wrap_assassin");
+					}
+					SetAmmo(client, TFWeaponSlot_Melee, 5);
+				}*/
+				case 730: //Beggar's Bazooka
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "135 ; 0.25 ; 58 ; 1.5 ; 2 ; 1.1 ; 4 ; 7.5 ; 6 ; 0 ; 76 ; 10 ; 97 ; 0.25 ; 411 ; 15 ; 413 ; 1 ; 417 ; 1");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "beggars_bazooka");
+					}
+				}
+				case 811, 832: // Huo-Long Heater
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "71 ; 1.25 ; 76 ; 2 ; 206 ; 1.25 ; 375 ; 50 ; 430 ; 1 ; 431 ; 5");
+					
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "huo_long_heater");
+					}
+				}
+				case 996: // Loose Cannon
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.25 ; 4 ; 1.5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 4 ; 466 ; 1 ; 467 ; 1 ; 470 ; 0.7");
+					
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "loose_cannon");
+					}
+				}
+				case 1104: // Air Strike
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "1 ; 0.90 ; 15 ; 1 ; 179 ; 1 ; 232 ; 10 ; 488 ; 3 ; 621 ; 0.35 ; 642 ; 1 ; 643 ; 0.75 ; 644 ; 10");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "air_strike");
+					}
+				}
+				case 1153: // Panic Attack
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "61 ; 1.5 ; 63 ; 1.5 ; 65 ; 1.5 ; 97 ; 0.77 ; 107 ; 1.7 ; 128 ; 1 ; 179 ; 1 ; 232 ; 15 ; 394 ; 0.85 ; 651 ; 0.5 ; 708 ; 1 ; 709 ; 1 ; 710 ; 1 ; 711 ; 1");	
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "panic_attack");
+					}
+				}
+				case 1151: // Iron Bomber
+				{
+					TF2_RemoveWeaponSlot(client, slot);
+					weapon=SpawnWeapon(client, classname, index, 5, 10, "2 ; 1.10 ; 4 ; 5 ; 6 ; 0.25 ; 97 ; 0.25 ; 76 ; 6 ; 671 ; 1 ; 684 ; 0.6");
+				
+					if(weaponInfo)
+					{
+						CPrintToChat(client, "%t", "iron_bomber");
+					}
+				}
 			}
-			
-			// Temporarily disabled Wrap Assassin due to some issues regarding insta-killing Blitz.
-			/*case 648:
-			{
-				TF2_RemoveWeaponSlot(client, TFWeaponSlot_Melee);
-				SpawnWeapon(client, classname, index, 5, 10, "1 , 0.3 ; 346 ; 1 ; 278 ; 1.5 ; 279 ; 5.0");
-				
-				PrintWeaponInfo(client, "Wrap Assassin:", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}+400% Max Misc Ammo", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}+50% Faster Recharge Rate", weaponInfo==true ? true : false);	
-				PrintWeaponInfo(client, "{blue}Alt-fire to launch ornament", weaponInfo==true ? true : false);			
-				PrintWeaponInfo(client, "{red}-70% Damage Penalty", weaponInfo==true ? true : false);
-				SetAmmo(client, TFWeaponSlot_Melee, 5);
-			}*/
-		}
-	}
-	
-	// Build PDA
-	weapon=GetPlayerWeaponSlot(client, 3);
-	if(weapon && IsValidEdict(weapon))
-	{
-		GetEdictClassname(weapon, classname, sizeof(classname));
-		index=GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		
-		if(!StrContains(classname, "tf_weapon_pda_engineer_build")) // Build PDA
-		{
-			TF2_RemoveWeaponSlot(client, 3);
-			SpawnWeapon(client, classname, index, 5, 10, "113 ; 10 ; 276 ; 1 ; 286 ; 2.25 ; 287 ; 1.25 ; 321 ; 0.70 ; 345 ; 4");
-			
-			PrintWeaponInfo(client, "Construction PDA:", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}Teleporters are bi-directional", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+10 Metal regenerated every 5 seconds", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+300% Dispenser range", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+30% Faster build speed", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+150% Building Health", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+25% Faster sentry firing speed", weaponInfo==true ? true : false);
-			PrintWeaponInfo(client, "{blue}+25% Sentry damage bonus", weaponInfo==true ? true : false);
 		}
 	}
 	
@@ -4116,11 +4085,99 @@ public int RandomDanmaku(int client, int difficulty)
 	}
 }
 
-public void HealPlayer(int clientIdx)
+#define SDHELL "super_danmaku_hell"
+#define BLDRSETUP "bloodrider_config"
+
+public void SuperDanmakuHell(int client, int boss)
 {
-	// damnit valve, why is max health so useless.
-	// gotta go with the hack fix instead
-	int maxHealth = GetEntProp(GetPlayerResourceEntity(), Prop_Send, "m_iMaxHealth", _, clientIdx);
-	maxHealth += 100;
-	SetEntityHealth(clientIdx, maxHealth);
+	int bldrIdx[MAXPLAYERS+1]=-1;
+	int blitzIdx[MAXPLAYERS+1]=-1;
+	char proj[32], projs[32][32];
+	FF2_GetAbilityArgumentString(boss, this_plugin_name, SDHELL, 1, proj, sizeof(proj));
+	
+	float pos[3], pos2[3], distance;
+	GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
+	float dist=FF2_GetAbilityArgumentFloat(boss,this_plugin_name,SDHELL, 2, FF2_GetRageDist(boss, this_plugin_name, SDHELL));	//range
+	
+	int bossIdx;
+	for(int player=1;player<=MaxClients;player++)
+	{
+		if(!IsValidClient(player, true))
+			continue;
+		bossIdx=FF2_GetBossIndex(player);
+		if(bossIdx>=0)
+		{
+			if(FF2_HasAbility(bossIdx, this_plugin_name, BLITZSETUP))
+			{
+				blitzIdx[player]=bossIdx;
+			}
+			if(FF2_HasAbility(bossIdx, this_plugin_name, BLDRSETUP))
+			{
+				bldrIdx[player]=bossIdx;
+			}		
+		}
+	}
+	
+	if(boss>=0 && (blitzIdx[client]==boss || bldrIdx[client]==boss))
+	{
+		int companionIdx;
+		for(int companion=1;companion<=MaxClients;companion++)
+		{
+			if(IsValidClient(companionIdx, true))
+				break;
+				
+			if(!IsValidClient(companion, true))
+				continue;
+	
+			bossIdx=FF2_GetBossIndex(companion);
+			if(bossIdx<0 || blitzIdx[companion]==blitzIdx[client] || bldrIdx[companion]==bldrIdx[client]) // Skip over the main boss and non-bosses
+				continue;
+			
+			GetEntPropVector(companion, Prop_Send, "m_vecOrigin", pos2);
+			distance=GetVectorDistance(pos, pos2);
+			if (distance<dist && (bldrIdx[companion]==bossIdx || blitzIdx[companion]==bossIdx))
+			{
+				companionIdx=companion;
+			}				
+		}
+		
+		if(!(GetEntityFlags(client) & FL_ONGROUND) && !(GetEntityFlags(companionIdx) & FL_ONGROUND))
+		{
+			return;
+		}
+		
+		SetEntityMoveType(client, MOVETYPE_NONE);
+		SetEntityMoveType(companionIdx, MOVETYPE_NONE);
+		CreateTimer(FF2_GetAbilityArgumentFloat(boss, this_plugin_name, SDHELL, 3), Timer_YouCanWalk, client);
+		CreateTimer(FF2_GetAbilityArgumentFloat(boss, this_plugin_name, SDHELL, 3), Timer_YouCanWalk, companionIdx);
+		
+		RageIsBarrage=true;
+		int rocketLauncher=RandomDanmaku(blitzIdx[client]==boss ? client : companionIdx, 9);
+		RageIsBarrage=false;
+		int grenadeLauncher=0; // Need grenade launcher stats here with 413 ; 1 attribute in place.
+	
+		SetAmmo(blitzIdx[client]==boss ? client : companionIdx, rocketLauncher,0);
+		SetAmmo(bldrIdx[client]==boss ? client : companionIdx, grenadeLauncher,0);	
+	
+		if(rocketLauncher && IsValidEntity(rocketLauncher) && grenadeLauncher && IsValidEntity(grenadeLauncher))
+		{
+			int projct = ExplodeString(proj, " ; ", projs, sizeof(projs), sizeof(projs));
+			if (projct > 0)
+			{
+				for (int i = 0; i < projct; i+=2)
+				{
+					SetEntProp(rocketLauncher, Prop_Send, "m_iClip1", StringToInt(projs[i]));
+					SetEntProp(grenadeLauncher, Prop_Send, "m_iClip1", StringToInt(projs[i+1]));
+				}
+			}
+		}
+	}
+}
+
+public Action Timer_YouCanWalk(Handle timer, any client)
+{
+	if(!IsValidClient(client, true))
+		return Plugin_Stop;
+	SetEntityMoveType(client, MOVETYPE_WALK);
+	return Plugin_Continue;
 }
