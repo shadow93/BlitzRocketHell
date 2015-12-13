@@ -956,11 +956,13 @@ public Blitzkrieg_HookAbilities()
 				if (difficultyOverride != -1)
 					DifficultyLevel = difficultyOverride;
 				PrintToServer("difficulty will be %d", DifficultyLevel);
+				
+				MinDifficulty=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 10, 2); // Minimum level to roll on random mode
+				MaxDifficulty=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 11, 5); // Max level to roll on random mode
+				
 				if(!DifficultyLevel)
 				{
 					IsRandomDifficultyMode = true;
-					MinDifficulty=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 10, 2); // Minimum level to roll on random mode
-					MaxDifficulty=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 11, 5); // Max level to roll on random mode
 					DifficultyLevel=GetRandomInt(MinDifficulty,MaxDifficulty);
 				}
 
@@ -1277,7 +1279,7 @@ public Action:FF2_OnAbility2(boss,const String:plugin_name[],const String:abilit
 		if(LevelUpgrade)
 		{
 			LoomynartyMusic = true;
-			if(IsRandomDifficultyMode && LevelUpgrade==1)
+			if(LevelUpgrade==1)
 				DifficultyLevel=GetRandomInt(MinDifficulty,MaxDifficulty);
 			else
 			{
