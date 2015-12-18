@@ -1,6 +1,4 @@
 /* 
-	ブリッツクリーグ
-	
 	SHADoW93's Project BlitzRocketHell Presents:
 	
 	The Blitzkrieg - The original Rocket Hell FF2 Boss
@@ -9,143 +7,6 @@
 	Special thanks to BBG_Theory, M76030, Ravensbro, Transit of Venus, and VoiDED for pointing out bugs
 	
 	Many thanks to sarysa for many fixes, improvements and enhancements.
-	
-	How to configure his rounds:
-	
-		blitzkrieg_config
-			arg1 - Difficulty Level
-				0 - Always Random
-				1 - Easy
-				2 - Normal
-				3 - Intermediate
-				4 - Difficult
-				5 - Lunatic
-				6 - Insane
-				7 - Godlike
-				8 - Rocket Hell
-				9 - Total Blitzkrieg
-				420 - MLG Pro: Level W33D
-				1337 - MLG Pro: Level L33T
-				9001 - ITS OVER 9000!
-				
-			arg2 - Combat Style
-				1 - Rocket Launcher Only
-				0 - Rocket Launcher + Melee
-				
-			arg3 - Use Custom Weaponset?
-				1 - Enable
-				0 - Disable
-				
-			arg4 - Ability Activation notification
-				1 - Voice Lines
-				0 - Generic Sound
-				
-			arg5 - Ammo on RAGE (default 180)
-			
-			arg6 - Ammo on life loss (default 360)
-			
-			arg7 - Round Start Mode (if arg2 = 0)
-				1 - Start with rocket launcher equipped
-				0 - Start with only Melee
-				
-			arg8 - Allow Medics to revive players
-				1 - Enable revive markers with a fixed # of revives
-				0 - Disable revive markers
-				-1 - Enable revive markers with no revive limit
-				
-			arg9 - Revive Marker Duration (default 30 seconds)
-			
-				arg10-arg11 only if arg1 is set to 0
-			arg10 - What is the minimum level to select? (Default 2)
-			arg11 - What is the maximum level to select? (Default 5)
-			
-			arg12 - Reroll a different difficulty level? (1 & 0 only function if on random mode, 2 will work independent of this setting)
-				2 - Level Up
-				1 - Reroll
-				0 - Retain same level
-				
-			arg13 - RAGE on Kill? (default is no RAGE on kill)
-			arg14 - Projectile bounce?
-		
-		mini_blitzkrieg
-			arg0 - Ability Slot
-			arg1 - Kritzkrieg Duration
-			
-		blitzkrieg_RageIsBarrage
-			arg0 - Ability Slot
-			arg1 - Ubercharge duration
-			arg2 - Kritzkrieg Duration
-			arg3 - Rampage duration (if arg1 = 1, will switch to normal rocket launchers)
-				
-		point_teleport
-		
-			slot (arg0) simply determines if normal rage (0) or death rage (-1) fills charges
-			arg1 - activation key. 1 is left click, 2 is right click, 3 is reload, 4 is middle mouse
-			arg2 - number of uses per rage.
-			arg3 - max distance
-			arg4 - hint text string
-			arg5 - particle effect (old location)
-			arg6 -  particle effect (old location)
-			arg7 - war3source/blinkarrival.wav" //"buttons/blip1.wav" // sound to play on teleport
-			arg8 - if this is 1, preserves momentum (same as otokiru version)
-			arg9 - if this is 1, charges are added to your total (different from otokiru version)
-			arg10 - if this is 1, your clip is emptied upon teleport. really this feature is _only_ for blitzkrieg. at high difficulties without this you'd get cheap(er) kills.
-			arg11 - attack delay set on all weapons upon point teleport. again, mainly just for Blitzkrieg. won't do squat if he rages after.
-		
-		blitzkrieg_misc_overrides
-			arg1 - rocket model override
-			arg2 - rocket recolors, standard weapons
-			arg3 - rocket recolors, total blitzkrieg
-			arg4 - damage multiplier while crits are active. use this to reduce (or increase) crit damage, which is a 3.0 multiplier
-			arg5 - damage multiplier while strength is active. use this to reduce (or increase) strength damage, which is a 2.0 multiplier
-			arg6 - explosion radius modifiers based on difficulty level.
-			arg7 - disable the sound that plays before the round start (and the outro sound). why do it here? it's easier.
-		
-			medic stuff -- excess medics will be stripped of their minigun but given a very powerful crossbow
-			arg8 - max standard medics. it can either be a solid value (1-31) or a percentage (0.00001 to 0.99999...) [set to 0 to not use]
-			arg9 - crossbow weapon index (305 = normal, 1079 = festive)
-			arg10 - attributes
-			arg11 - random selection notification
-			arg12 -  medic limit notification
-			arg13 - override for straight goomba damage, leave blank or set to zero to not use
-			arg14 - override for HP factor goomba damage, leave blank or set to zero to not use
-			arg15 - needed for medic limit
-			arg16 - Round time limit (in seconds)
-			
-			arg19 - various flags, add them up for desired results
-				0x0001: Never change the player model.
-				0x0002: Never change the player class
-				0x0004: Never change the melee weapon
-				0x0008: Don't spawn a parachute.
-				0x0010: Don't allow novelty difficulties.
-				0x0020: Block random crits.
-				0x0040: Ensure explosion radius modifiers stack properly with automatic ones. (direct hit 0.3, air strike 0.85)
-				0x0080: No MVM alert sounds.
-				0x0100: Disable the Blitzkrieg voice messages.
-				0x0200: Disable the match begin Administrator messages.
-				0x0400: Disable the match end Administrator messages.
-				0x0800: Disable class reaction messages.
-				0x1000: Disable goombas entirely.
-				0x8000: VSP-specific workaround for the head collection problem. If you're not VSP, don't include this flag.
-
-		blitzkrieg_map_difficulty_override
-		
-			note: since I'm making default difficulty level 1, arg2-arg9 will correspond with standard difficulty levels
-			arg10-arg19 I'll use for spillover, since I limit each string to 512 characters
-			to speed things up, PARTIAL NAME MATCHES ARE NOT ALLOWED! argument skips are allowed.
-			arg1 - default difficulty for arg2-arg19
-			arg2-arg19 - map names
-
-		blitzkrieg_weapon_override0 - there can be up to 10 of these, from 0 to 9
-		
-			and args 1-18 will just be weapon index, weapon attributes, over and over
-			allows for server specific weapon stat overrides
-			what you see is very VSP specific, and not suitable for other servers.
-			note that sequential breaks ARE allowed, so if you have 12 args and delete 7 and 8 later
-			it won't break 9-12
-			
-			arg1 (and odd # args)	- index
-			arg2 (and even # args)	- attributes
 */
 
 #pragma semicolon 1
@@ -214,7 +75,7 @@ new rBounce[MAX_EDICTS], rMaxBounceCount[MAX_EDICTS], rMaxBounces = 0;
 // Version Number
 #define MAJOR_REVISION "3"
 #define MINOR_REVISION "2"
-//#define PATCH_REVISION "0"
+#define PATCH_REVISION "2"
 #define DEV_REVISION "Beta"
 #define BUILD_REVISION "(Stable)"
 
@@ -233,26 +94,27 @@ public Plugin:myinfo = {
 
 
 //Other Stuff
-new blitzBossIdx;
+int blitzBossIdx;
 bool RNGesus=false;
-new UseCustomWeapons;
-new WeaponMode;
-new DifficultyLevel;
-new AlertMode;
+float DiffMultiplier;
+int UseCustomWeapons;
+int WeaponMode;
+int DifficultyLevel;
+int AlertMode;
 new String:DifficultyLevelString[MAX_CENTER_TEXT_LENGTH];
-new LifeLossRockets;
-new RageRockets;
-new RoundStartMode;
-new MinDifficulty;
-new MaxDifficulty;
-new LevelUpgrade;
-new bool:IsRandomDifficultyMode = false;
-new bool:RageIsBarrage = false;
-new bool:blitzisboss = false;
-new bool:BossIsWinner = false;
-new bool:hooksEnabled = false;
-new rocketCount=0;
-new bool:IsBlitzkrieg[MAXPLAYERS+1];
+int LifeLossRockets;
+int RageRockets;
+int RoundStartMode;
+int MinDifficulty;
+int MaxDifficulty;
+int LevelUpgrade;
+bool IsRandomDifficultyMode = false;
+bool RageIsBarrage = false;
+bool blitzisboss = false;
+bool BossIsWinner = false;
+bool hooksEnabled = false;
+int rocketCount=0;
+bool IsBlitzkrieg[MAXPLAYERS+1];
 
 // Reanimators
 new MaxClientRevives;
@@ -284,7 +146,6 @@ new Float:Blitzkrieg_FindBlitzkriegAt;
 new Float:Blitz_HUDSync;
 new Float:Blitz_EndCrocketHellAt;
 new Float:Blitz_WaveTick;
-new Float:Blitz_PostSetupAt;
 new Float:Blitz_AdminTauntAt;
 new Float:Blitz_RemoveUberAt;
 new Float:Blitz_ReverifyWeaponsAt[MAX_PLAYERS_ARRAY];
@@ -761,7 +622,6 @@ public Blitzkrieg_HookAbilities()
 	blitzisboss = false;
 	Blitz_WaveTick = FAR_FUTURE;
 	Blitz_EndCrocketHellAt = FAR_FUTURE;
-	Blitz_PostSetupAt = FAR_FUTURE;
 	Blitz_AdminTauntAt = FAR_FUTURE;
 	Blitz_RemoveUberAt = FAR_FUTURE;
 	Blitz_HUDSync = FAR_FUTURE;
@@ -949,8 +809,10 @@ public Blitzkrieg_HookAbilities()
 				// Custom Weapon Handler System
 				UseCustomWeapons=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 3); // use custom weapons
 				if(UseCustomWeapons)
-					Blitz_PostSetupAt = GetEngineTime() + 0.3;
-
+				{
+					PostSetup();
+				}
+				
 				// Weapon Difficulty
 				DifficultyLevel=FF2_GetAbilityArgument(bossIdx,this_plugin_name,BLITZSETUP, 1, 2);
 				if (difficultyOverride != -1)
@@ -1070,6 +932,7 @@ public Blitzkrieg_HookAbilities()
 				maxWaves = FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 17);
 				RNGesus = bool:FF2_GetAbilityArgument(bossIdx, this_plugin_name, BLITZSETUP, 18);
 				
+				DiffMultiplier = FF2_GetAbilityArgumentFloat(bossIdx, this_plugin_name, BLITZSETUP, 19, 0.25);
 				
 				if(LevelUpgrade)
 					Blitz_AdminTauntAt = GetEngineTime() + 6.0;
@@ -1439,8 +1302,7 @@ PlotTwist(client)
 	{
 		if (!(BMO_Flags & BMO_FLAG_KEEP_PLAYER_CLASS))
 		{
-			new RandomClass = GetRandomInt(0,1);
-			TF2_SetPlayerClass(client, (RandomClass == 0 ? TFClass_Medic : TFClass_Soldier), _, false);
+			TF2_SetPlayerClass(client, (GetRandomInt(0,1) == 0 ? TFClass_Medic : TFClass_Soldier), _, false);
 		}
 	}
 	
@@ -1466,6 +1328,7 @@ PlotTwist(client)
 		AcceptEntityInput(client, "SetCustomModel");
 		SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
 	}
+	
 	// Removing all wearables
 	new entity, owner;
 	while((entity=FindEntityByClassname(entity, "tf_wearable"))!=-1)
@@ -1479,7 +1342,7 @@ PlotTwist(client)
 			TF2_RemoveWearable(owner, entity);
 
 	if (!(BMO_Flags & BMO_FLAG_NO_PARACHUTE))
-		SpawnWeapon(client, "tf_weapon_parachute", 1101, 109, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
+		SpawnWeapon(client, "tf_weapon_parachute", 1101, DifficultyLevel, 5, "700 ; 1 ; 701 ; 99 ; 702 ; 99 ; 703 ; 99 ; 705 ; 1 ; 640 ; 1 ; 68 ; 12 ; 269 ; 1 ; 275 ; 1");
 
 	if(RageIsBarrage || RoundStartMode)
 		RandomDanmaku(client, DifficultyLevel);
@@ -1488,19 +1351,30 @@ PlotTwist(client)
 	{
 		if (!(BMO_Flags & BMO_FLAG_KEEP_MELEE))
 		{
+			char blitzAtts[512];
 			switch(DifficultyLevel)
 			{
-				case 420: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 391 ; 5.2 ; 401 ; 5.2 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 4");						
-				case 777: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 8.77 ; 137 ; 8.77 ; 267 ; 1 ; 391 ; 8.77 ; 401 ; 8.77 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-				case 999: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 10.99 ; 137 ; 10.99 ; 267 ; 1 ; 391 ; 10.99 ; 401 ; 10.99 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-				case 1337: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 14.37 ; 137 ; 14.37 ; 267 ; 1 ; 391 ; 14.37 ; 401 ; 14.37 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-				case 9001: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 100 ; 137 ; 100 ; 267 ; 1 ; 391 ; 100 ; 401 ; 100 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 5");						
-				default: SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), 109, 5, "2 ; 3.1 ; 138 ; 0.75 ; 39 ; 0.3 ; 267 ; 1 ; 391 ; 1.9 ; 401 ; 1.9 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				case 420: Format(blitzAtts, sizeof(blitzAtts), "2 ; 5.2 ; 137 ; 5.2 ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				case 777: Format(blitzAtts, sizeof(blitzAtts), "2 ; 8.77 ; 137 ; 8.77 ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				case 999: Format(blitzAtts, sizeof(blitzAtts), "2 ; 10.99 ; 137 ; 10.99 ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				case 1337: Format(blitzAtts, sizeof(blitzAtts), "2 ; 14.37 ; 137 ; 14.37 ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				case 9001: Format(blitzAtts, sizeof(blitzAtts), "2 ; 100 ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6");
+				default: Format(blitzAtts, sizeof(blitzAtts), "%i ; %f ; 267 ; 1 ; 2025 ; 3 ; 2013 ; 2007 ; 2014 ; 6", GetDamageValue(DifficultyLevel, DiffMultiplier)<1 ? 1 : 2, GetDamageValue(DifficultyLevel, DiffMultiplier));
 			}
+			SpawnWeapon(client, "tf_weapon_knife", (TF2_GetPlayerClass(client) == TFClass_Medic ? 1003 : 416), DifficultyLevel, 5, blitzAtts);
 		}
 	}
 	SetAmmo(client, TFWeaponSlot_Primary,(WeaponMode==1 ? 999999 : (RageIsBarrage == true ? LifeLossRockets : RageRockets)));
 }		
+
+stock float GetDamageValue(int level, float multiplier=0.25)
+{
+	if(level<=0) // Use default damage bonus if value is 0 or negative
+	{
+		return 3.1;
+	}
+	return level*multiplier;
+}
 
 // Weaponswitch
 
@@ -1745,7 +1619,10 @@ public PostSetup()
 		{
 			isMedigunMedic[clientIdx] = false;
 			BMO_MedicType[clientIdx] = BMO_NOT_A_MEDIC;
-			if (!IsValidClient(clientIdx, true) || GetClientTeam(clientIdx) == FF2_GetBossTeam())
+			if (!IsValidClient(clientIdx, true))
+				continue;
+				
+			if(IsBoss(clientIdx))
 				continue;
 			
 			totalPlayerCount++;
@@ -1759,7 +1636,7 @@ public PostSetup()
 				BMO_MedicType[clientIdx] = BMO_CROSSBOW_MEDIC;
 				continue;
 			}
-			
+				
 			if (IsInstanceOf(weapon, "tf_weapon_medigun"))
 			{
 				BMO_MedicType[clientIdx] = BMO_MEDIGUN_MEDIC;
@@ -1781,7 +1658,7 @@ public PostSetup()
 			new rand = GetRandomInt(0, count - 1);
 			for (new clientIdx = 1; clientIdx < MAX_PLAYERS; clientIdx++)
 			{
-				if (isMedigunMedic[clientIdx])
+				if (isMedigunMedic[clientIdx] && !IsBoss(clientIdx))
 				{
 					if (rand == 0)
 					{
@@ -2190,12 +2067,6 @@ public Blitz_Tick(Float:curTime)
 			ItzBlitzkriegTime(clientIdx);
 		}
 		Blitz_EndCrocketHellAt = FAR_FUTURE;
-	}
-	
-	if (curTime >= Blitz_PostSetupAt)
-	{
-		PostSetup();
-		Blitz_PostSetupAt = FAR_FUTURE;
 	}
 	
 	if (curTime >= Blitz_AdminTauntAt)
@@ -3547,6 +3418,7 @@ stock void SetAmmo(int client, int slot, int ammo)
 
 stock bool IsBoss(int client)
 {
+	if(TF2_GetClientTeam(client)!=view_as<TFTeam>(FF2_GetBossTeam())) return false;
 	if(FF2_GetBossIndex(client)==-1) return false;
 	return true;
 }
@@ -3684,7 +3556,7 @@ public int RandomDanmaku(int client, int difficulty)
 	}
 	
 	TF2Items_SetAttribute(hItem, 1, 97, 0.0); // Reload Speed
-	TF2Items_SetAttribute(hItem, 2, 642, 1.0); // Mini-Projectiles
+	TF2Items_SetAttribute(hItem, 2, RageIsBarrage && RNGesus ? 521 : 542, 1.0); // Mini-Projectiles
 	TF2Items_SetAttribute(hItem, 3, 413, 1.0); // Press & Hold to reload
 	TF2Items_SetAttribute(hItem, 4, 2025, 3.0); //Is Pro Killstreak
 	TF2Items_SetAttribute(hItem, 5, 2013, GetRandomFloat(2002.0, 2008.0)); // Killstreaker
@@ -3751,6 +3623,11 @@ public void HealPlayer(int clientIdx)
  
 public void CheckWeapons(int client, bool weaponInfo)
 {
+	if(IsBoss(client))
+	{
+		return;
+	}
+
 	// special logic for meeeeeedic
 	if(BMO_MedicType[client]!=BMO_MEDIGUN_MEDIC && TF2_GetPlayerClass(client)==TFClass_Medic)
 	{
