@@ -618,8 +618,11 @@ public Blitz_AddHooks()
 	AddCommandListener(BlitzHelp, "haleclassinfo");
 	AddCommandListener(BlitzHelp, "ff2help");
 	AddCommandListener(BlitzHelp, "helpme");
-	RegConsoleCmd("blitz_reroll", Command_Reroll, "Change Rocket Launcher");
-	RegConsoleCmd("blitz_changeclass", Command_RerollClass, "Change Rocket Launcher and Class");
+	
+	// DEBUG COMMANDS!
+	/*RegConsoleCmd("blitz_reroll", Command_Reroll, "Change Rocket Launcher");
+	RegConsoleCmd("blitz_changeclass", Command_RerollClass, "Change Rocket Launcher and Class");*/
+	
 	hooksEnabled = true;
 }
 
